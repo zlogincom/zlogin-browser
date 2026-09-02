@@ -1,0 +1,16 @@
+{
+	"name": "zlogin-public",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Public ZLogin CLI, MCP, core contracts, and agent skills monorepo scaffold",
+	"packageManager": "pnpm@10.14.0",
+	"license": "UNLICENSED",
+	"scripts": {
+		"check": "node scripts/check-structure.mjs",
+		"format": "prettier --write .",
+		"format:check": "prettier --check ."
+	},
+	"devDependencies": {
+		"prettier": "^3.6.2"
+	}
+}

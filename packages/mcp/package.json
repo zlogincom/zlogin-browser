@@ -1,0 +1,11 @@
+{
+	"name": "@zlogin/mcp",
+	"version": "0.1.0",
+	"private": true,
+	"description": "ZLogin Model Context Protocol server scaffold",
+	"type": "module",
+	"license": "UNLICENSED",
+	"dependencies": {
+		"@zlogin/core": "workspace:*"
+	}
+}

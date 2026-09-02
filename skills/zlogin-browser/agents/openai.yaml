@@ -1,0 +1,4 @@
+interface:
+    display_name: "ZLogin Browser"
+    short_description: "Use ZLogin profiles and automate browser pages"
+    default_prompt: "Use $zlogin-browser to manage ZLogin environments or automate a connected browser page."

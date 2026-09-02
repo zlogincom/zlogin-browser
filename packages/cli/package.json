@@ -1,0 +1,11 @@
+{
+	"name": "@zlogin/cli",
+	"version": "0.1.0",
+	"private": true,
+	"description": "ZLogin command-line interface scaffold",
+	"type": "module",
+	"license": "UNLICENSED",
+	"dependencies": {
+		"@zlogin/core": "workspace:*"
+	}
+}
