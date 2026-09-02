@@ -8,7 +8,8 @@ The intended public surface includes:
 - `packages/cli`: a command-line interface for local ZLogin operations.
 - `packages/mcp`: an MCP server for AI clients.
 - `skills/`: reusable agent skills that route natural-language requests to the CLI or MCP tools.
-- `docs/`: architecture, security, contribution, and release documentation.
+- `docs/`: architecture and release documentation.
+- `SECURITY.md` and `CONTRIBUTING.md`: security and contribution boundaries.
 
 The ZLogin desktop application, browser kernels, cloud services, account data, credentials, and server-side implementation are outside this repository.
 

@@ -5,6 +5,8 @@ import { resolve } from "node:path";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const requiredFiles = [
 	"README.md",
+	"SECURITY.md",
+	"CONTRIBUTING.md",
 	"package.json",
 	"pnpm-workspace.yaml",
 	"docs/ARCHITECTURE.md",
