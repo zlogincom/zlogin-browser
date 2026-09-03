@@ -3,7 +3,7 @@
 	"version": "0.1.1",
 	"description": "Model Context Protocol server for the ZLogin Local Open API and browser automation",
 	"type": "module",
-	"license": "UNLICENSED",
+	"license": "MIT",
 	"author": "NORTHVALE SYSTEMS PTE. LTD.",
 	"repository": {
 		"type": "git",

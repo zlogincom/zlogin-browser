@@ -69,7 +69,7 @@ Install the skill from a checkout by placing `skills/zlogin-browser` in the agen
 
 The CLI package is intentionally not implemented yet and is the next-version target.
 
-The repository is intentionally marked `UNLICENSED` for now. Choose and add a license before making the repository public or publishing packages. See [docs/PUBLIC-RELEASE-CHECKLIST.md](docs/PUBLIC-RELEASE-CHECKLIST.md).
+This repository and its published MCP/core packages are licensed under the [MIT License](LICENSE). The CLI remains a private next-version scaffold.
 
 ## Capability Boundaries
 

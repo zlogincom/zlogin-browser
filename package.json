@@ -4,7 +4,7 @@
 	"private": true,
 	"description": "Public ZLogin CLI, MCP, core contracts, and agent skills monorepo scaffold",
 	"packageManager": "pnpm@10.14.0",
-	"license": "UNLICENSED",
+	"license": "MIT",
 	"scripts": {
 		"build": "pnpm --filter @zlogin/core build && pnpm --filter zlogin-mcp build",
 		"check": "node scripts/check-structure.mjs && pnpm --filter @zlogin/core check && pnpm --filter zlogin-mcp check",

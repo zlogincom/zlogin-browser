@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "Shared public contracts and capability metadata for ZLogin integrations",
 	"type": "module",
-	"license": "UNLICENSED",
+	"license": "MIT",
 	"author": "NORTHVALE SYSTEMS PTE. LTD.",
 	"repository": {
 		"type": "git",

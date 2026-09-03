@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const requiredFiles = [
 	"README.md",
+	"LICENSE",
 	"SECURITY.md",
 	"CONTRIBUTING.md",
 	"package.json",

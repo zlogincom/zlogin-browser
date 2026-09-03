@@ -5,8 +5,8 @@ Complete these items before changing the repository visibility to public or publ
 ## Legal and Ownership
 
 - [ ] Confirm which code, schemas, documentation, and assets ZLogin owns and may redistribute.
-- [ ] Choose an open-source or commercial license and add `LICENSE`.
-- [ ] Set matching `license` metadata in every package that will be published.
+- [x] Choose an open-source or commercial license and add `LICENSE`.
+- [x] Set matching `license` metadata in every package that will be published.
 - [ ] Add repository, contribution, and support information.
 
 ## Security
