@@ -6,7 +6,7 @@ The MCP server exposes the ZLogin Local Open API over stdio. The `zlogin-browser
 
 The intended public surface includes:
 
-- `packages/core`: shared API contracts, types, request helpers, and capability metadata.
+- `packages/core`: the `zlogin-core` package with shared API contracts and capability metadata.
 - `packages/cli`: a command-line interface for local ZLogin operations.
 - `packages/mcp`: an MCP server for AI clients.
 - `skills/`: reusable agent skills that route natural-language requests to the CLI or MCP tools.

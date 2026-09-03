@@ -1,6 +1,6 @@
 # zlogin-mcp
 
-Local stdio Model Context Protocol server for the ZLogin desktop client, modeled as a narrow adapter over the bundled ZLogin OpenAPI contract.
+Local stdio Model Context Protocol server for the ZLogin desktop client, modeled as a narrow adapter over the bundled ZLogin OpenAPI contract. It uses the public `zlogin-core` contract package.
 
 It exposes 75 Open API tools and, by default, 21 Playwright/CDP automation tools. Input schemas are generated from the bundled OpenAPI 3.1 document; successful responses retain request IDs, ETags, and rate-limit metadata.
 

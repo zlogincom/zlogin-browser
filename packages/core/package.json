@@ -1,5 +1,5 @@
 {
-	"name": "@zlogin/core",
+	"name": "zlogin-core",
 	"version": "0.1.0",
 	"description": "Shared public contracts and capability metadata for ZLogin integrations",
 	"type": "module",

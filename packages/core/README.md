@@ -1,4 +1,4 @@
-# @zlogin/core
+# zlogin-core
 
 Shared contracts and capability metadata for the public ZLogin integrations.
 

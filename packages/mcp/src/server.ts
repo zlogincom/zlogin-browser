@@ -8,7 +8,7 @@ import {
 import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.js";
 import type { FormatsPlugin } from "ajv-formats";
 import { createRequire } from "node:module";
-import { ZLOGIN_AGENT_INSTRUCTIONS, ZLOGIN_MCP_SERVER_NAME, ZLOGIN_MCP_SERVER_VERSION } from "@zlogin/core";
+import { ZLOGIN_AGENT_INSTRUCTIONS, ZLOGIN_MCP_SERVER_NAME, ZLOGIN_MCP_SERVER_VERSION } from "zlogin-core";
 import type { ZLoginClient } from "./client.js";
 import { BrowserSessionManager } from "./automation/session-manager.js";
 import { createAutomationToolCatalog, type AutomationToolDefinition } from "./automation/tools.js";
