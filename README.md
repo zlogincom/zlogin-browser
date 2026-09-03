@@ -27,7 +27,7 @@ Build and start the local MCP server:
 
 ```bash
 pnpm install
-pnpm --filter @zlogin/mcp build
+pnpm --filter zlogin-mcp build
 ZLOGIN_API_KEY=replace-with-your-api-key node packages/mcp/dist/index.js
 ```
 

@@ -1,10 +1,22 @@
 {
-	"name": "@zlogin/mcp",
+	"name": "zlogin-mcp",
 	"version": "0.1.0",
-	"private": true,
 	"description": "Model Context Protocol server for the ZLogin Local Open API and browser automation",
 	"type": "module",
 	"license": "UNLICENSED",
+	"author": "NORTHVALE SYSTEMS PTE. LTD.",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/zlogincom/zlogin-browser.git",
+		"directory": "packages/mcp"
+	},
+	"homepage": "https://github.com/zlogincom/zlogin-browser#readme",
+	"bugs": {
+		"url": "https://github.com/zlogincom/zlogin-browser/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"bin": {
@@ -35,7 +47,7 @@
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.30.0",
-		"@zlogin/core": "workspace:*",
+		"@zlogin/core": "workspace:^",
 		"ajv": "^8.20.0",
 		"ajv-formats": "^3.0.1",
 		"playwright-core": "^1.62.1"

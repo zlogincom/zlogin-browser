@@ -1,4 +1,4 @@
-# @zlogin/mcp
+# zlogin-mcp
 
 Local stdio Model Context Protocol server for the ZLogin desktop client, modeled as a narrow adapter over the bundled ZLogin OpenAPI contract.
 
@@ -8,7 +8,7 @@ It exposes 75 Open API tools and, by default, 21 Playwright/CDP automation tools
 
 ```powershell
 pnpm install
-pnpm --filter @zlogin/mcp build
+pnpm --filter zlogin-mcp build
 $env:ZLOGIN_API_KEY = "replace-with-your-api-key"
 node packages/mcp/dist/index.js
 ```

@@ -31,7 +31,7 @@ importers:
                 specifier: ^1.30.0
                 version: 1.30.0(zod@4.5.4)
             "@zlogin/core":
-                specifier: workspace:*
+                specifier: workspace:^
                 version: link:../core
             ajv:
                 specifier: ^8.20.0

@@ -1,10 +1,22 @@
 {
 	"name": "@zlogin/core",
 	"version": "0.1.0",
-	"private": true,
 	"description": "Shared public contracts and capability metadata for ZLogin integrations",
 	"type": "module",
 	"license": "UNLICENSED",
+	"author": "NORTHVALE SYSTEMS PTE. LTD.",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/zlogincom/zlogin-browser.git",
+		"directory": "packages/core"
+	},
+	"homepage": "https://github.com/zlogincom/zlogin-browser#readme",
+	"bugs": {
+		"url": "https://github.com/zlogincom/zlogin-browser/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"exports": {

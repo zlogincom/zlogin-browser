@@ -5,7 +5,7 @@ description: "Manage ZLogin browser profiles and automate pages through the loca
 
 # ZLogin Browser
 
-Use the local stdio `@zlogin/mcp` server (binary `zlogin-mcp`) to operate the user's local ZLogin desktop client. The server exposes two layers:
+Use the local stdio `zlogin-mcp` server (binary `zlogin-mcp`) to operate the user's local ZLogin desktop client. The server exposes two layers:
 
 - Management tools for profiles, runtime state, fingerprints, advanced settings, groups, tags, proxies, cookies, accounts, startup pages, extensions, trash, and browser kernels.
 - Automation tools for CDP-connected browser sessions and pages.
