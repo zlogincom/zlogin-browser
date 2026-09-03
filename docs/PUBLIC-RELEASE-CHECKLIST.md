@@ -14,7 +14,8 @@ Complete these items before changing the repository visibility to public or publ
 - [ ] Confirm no API keys, customer data, cookies, account secrets, proxy passwords, or private binaries are tracked.
 - [ ] Restrict configurable API destinations so credentials cannot be sent to an unintended host.
 - [ ] Document least-privilege API key setup and local-only deployment boundaries.
-- [ ] Enable GitHub private vulnerability reporting or publish a security contact.
+- [x] Publish a monitored security contact in `SECURITY.md` (`security@zlogin.com`).
+- [ ] Enable GitHub private vulnerability reporting after repository visibility is changed to public.
 - [ ] Review CLI and MCP destructive operations and their confirmation behavior.
 
 ## Quality and Release

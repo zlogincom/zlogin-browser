@@ -1,6 +1,6 @@
 # Contributing
 
-This repository is currently a scaffold for the public ZLogin CLI, MCP, core contracts, and agent skills.
+This repository contains the ZLogin MCP server, shared core contracts, agent skill, and the planned CLI.
 
 Before contributing:
 
@@ -9,4 +9,4 @@ Before contributing:
 - Add or update tests for behavioral changes.
 - Run `pnpm install`, `pnpm run check`, and `pnpm run format:check` before opening a pull request.
 
-The contribution and licensing model will be finalized before the repository is made public.
+The CLI remains a next-version target. The repository license and contribution model must be finalized before publishing packages or describing the project as open source.

@@ -2,10 +2,47 @@
 	"name": "@zlogin/mcp",
 	"version": "0.1.0",
 	"private": true,
-	"description": "ZLogin Model Context Protocol server scaffold",
+	"description": "Model Context Protocol server for the ZLogin Local Open API and browser automation",
 	"type": "module",
 	"license": "UNLICENSED",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"bin": {
+		"zlogin-mcp": "./dist/index.js"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"assets",
+		"docs",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"dev": "tsx src/index.ts",
+		"start": "node dist/index.js",
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+		"test": "tsx --test tests/*.test.ts",
+		"check": "pnpm run typecheck && pnpm run test && pnpm run build"
+	},
+	"engines": {
+		"node": ">=20"
+	},
 	"dependencies": {
-		"@zlogin/core": "workspace:*"
+		"@modelcontextprotocol/sdk": "^1.30.0",
+		"@zlogin/core": "workspace:*",
+		"ajv": "^8.20.0",
+		"ajv-formats": "^3.0.1",
+		"playwright-core": "^1.62.1"
+	},
+	"devDependencies": {
+		"@types/node": "^24.3.0",
+		"tsx": "^4.20.5",
+		"typescript": "^5.9.2"
 	}
 }

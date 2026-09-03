@@ -6,11 +6,15 @@
 	"packageManager": "pnpm@10.14.0",
 	"license": "UNLICENSED",
 	"scripts": {
-		"check": "node scripts/check-structure.mjs",
+		"build": "pnpm --filter @zlogin/core build && pnpm --filter @zlogin/mcp build",
+		"check": "node scripts/check-structure.mjs && pnpm --filter @zlogin/core check && pnpm --filter @zlogin/mcp check",
+		"test": "pnpm --filter @zlogin/mcp test",
 		"format": "prettier --write .",
 		"format:check": "prettier --check ."
 	},
 	"devDependencies": {
-		"prettier": "^3.6.2"
+		"@types/node": "^24.3.0",
+		"prettier": "^3.6.2",
+		"typescript": "^5.9.2"
 	}
 }

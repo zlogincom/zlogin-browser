@@ -1,6 +1,8 @@
-# ZLogin Public Ecosystem
+# ZLogin MCP & Skill
 
-This repository is the planned public home for ZLogin integrations that can be distributed independently from the ZLogin desktop client.
+Local MCP and agent skill integrations for the ZLogin desktop browser client.
+
+The MCP server exposes the ZLogin Local Open API over stdio. The `zlogin-browser` skill teaches compatible agents how to select tools, preserve ETags, handle sensitive data, and automate connected pages safely.
 
 The intended public surface includes:
 
@@ -13,13 +15,73 @@ The intended public surface includes:
 
 The ZLogin desktop application, browser kernels, cloud services, account data, credentials, and server-side implementation are outside this repository.
 
-## Repository Status
+## Quick Start
 
-This repository is an initial scaffold. The package directories define ownership boundaries; implementation will be moved or added incrementally after the public API and licensing decisions are finalized.
+Requirements:
 
-The repository is intentionally marked `UNLICENSED` for now. Choose and add a license before making the repository public or describing the contents as open source. See [docs/PUBLIC-RELEASE-CHECKLIST.md](docs/PUBLIC-RELEASE-CHECKLIST.md).
+- ZLogin desktop client with Local Open API enabled
+- Node.js 20 or later
+- pnpm 10 or later
 
-## Layout
+Build and start the local MCP server:
+
+```bash
+pnpm install
+pnpm --filter @zlogin/mcp build
+ZLOGIN_API_KEY=replace-with-your-api-key node packages/mcp/dist/index.js
+```
+
+For Windows PowerShell:
+
+```powershell
+$env:ZLOGIN_API_KEY = "replace-with-your-api-key"
+node packages/mcp/dist/index.js
+```
+
+Add the server to an MCP client using the absolute path to `packages/mcp/dist/index.js`:
+
+```json
+{
+	"mcpServers": {
+		"zlogin": {
+			"command": "node",
+			"args": ["C:/absolute/path/to/zlogin-github-public/packages/mcp/dist/index.js"],
+			"env": {
+				"ZLOGIN_API_KEY": "replace-with-your-api-key",
+				"ZLOGIN_BASE_URL": "http://127.0.0.1:50025",
+				"ZLOGIN_ENABLE_AUTOMATION": "true"
+			}
+		}
+	}
+}
+```
+
+Install the skill from a checkout by placing `skills/zlogin-browser` in the agent's skills directory, or use the repository directly when the agent supports project-local skills. The skill entrypoint is [skills/zlogin-browser/SKILL.md](skills/zlogin-browser/SKILL.md).
+
+## What Is Included
+
+`packages/mcp` contains:
+
+- 75 OpenAPI-driven management tools for profiles, runtime state, fingerprints, settings, groups, tags, proxies, cookies, accounts, startup pages, extensions, trash, and browser kernels.
+- 21 Playwright/CDP tools for sessions, pages, navigation, inspection, screenshots, input, keyboard, drag/drop, iframes, and script evaluation.
+- Structured responses with request IDs, ETags, rate-limit metadata, and stable error details.
+- Read-only, action, and destructive MCP annotations so clients can make better confirmation decisions.
+
+The CLI package is intentionally not implemented yet and is the next-version target.
+
+The repository is intentionally marked `UNLICENSED` for now. Choose and add a license before making the repository public or publishing packages. See [docs/PUBLIC-RELEASE-CHECKLIST.md](docs/PUBLIC-RELEASE-CHECKLIST.md).
+
+## Capability Boundaries
+
+- Local stdio transport only. No remote MCP listener is included.
+- No headless ZLogin startup, RPA engine, profile sharing, or server-side authorization bypass.
+- API keys are read from the MCP process environment and are never tool arguments.
+- Cookies, account passwords, proxy credentials, two-factor secrets, and page contents are sensitive; the server bounds or suppresses them in results.
+- Permanent deletion, broad shutdown, and page actions are explicitly annotated and should be confirmed when the request is ambiguous.
+
+See [packages/mcp/docs/TOOLS.md](packages/mcp/docs/TOOLS.md), [skills/zlogin-browser/references/tool-intent-map.md](skills/zlogin-browser/references/tool-intent-map.md), and [skills/zlogin-browser/references/workflows.md](skills/zlogin-browser/references/workflows.md).
+
+## Repository Layout
 
 ```text
 packages/
@@ -44,6 +106,8 @@ Requirements:
 pnpm install
 pnpm run check
 ```
+
+For package-specific configuration, development commands, and release notes, see [packages/mcp/README.md](packages/mcp/README.md).
 
 No API key, desktop client, or live ZLogin environment is required for the scaffold checks.
 

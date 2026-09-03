@@ -1,5 +1,5 @@
 # @zlogin/core
 
-Shared contracts for the future public ZLogin CLI and MCP packages.
+Shared contracts and capability metadata for the public ZLogin integrations.
 
-This package is currently a scaffold. Add public API schemas, types, request helpers, and intent metadata here before implementing duplicate logic in the adapters.
+The package currently owns stable server identity, agent guidance, profile selector types, response metadata, and rate-limit contracts used by `@zlogin/mcp`. It intentionally has no dependency on a terminal UI or a specific AI client.
