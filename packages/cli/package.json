@@ -6,6 +6,6 @@
 	"type": "module",
 	"license": "UNLICENSED",
 	"dependencies": {
-		"@zlogin/core": "workspace:*"
+		"zlogin-core": "workspace:*"
 	}
 }

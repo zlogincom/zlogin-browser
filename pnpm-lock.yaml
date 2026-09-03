@@ -19,7 +19,7 @@ importers:
 
     packages/cli:
         dependencies:
-            "@zlogin/core":
+            zlogin-core:
                 specifier: workspace:*
                 version: link:../core
 
@@ -30,9 +30,6 @@ importers:
             "@modelcontextprotocol/sdk":
                 specifier: ^1.30.0
                 version: 1.30.0(zod@4.5.4)
-            "@zlogin/core":
-                specifier: workspace:^
-                version: link:../core
             ajv:
                 specifier: ^8.20.0
                 version: 8.20.0
@@ -42,6 +39,9 @@ importers:
             playwright-core:
                 specifier: ^1.62.1
                 version: 1.62.1
+            zlogin-core:
+                specifier: workspace:^
+                version: link:../core
         devDependencies:
             "@types/node":
                 specifier: ^24.3.0
