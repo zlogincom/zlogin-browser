@@ -1,6 +1,6 @@
 {
 	"name": "zlogin-mcp",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Model Context Protocol server for the ZLogin Local Open API and browser automation",
 	"type": "module",
 	"license": "UNLICENSED",
