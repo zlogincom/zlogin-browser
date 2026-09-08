@@ -4,10 +4,21 @@ import * as os from "node:os";
 import * as process from "node:process";
 import { downloadAndInstallRuntime, fetchReleaseManifest, readCurrentRuntime } from "./runtime.js";
 import { getRuntimeStatus, startRuntime, stopRuntime } from "./supervisor.js";
+import { getAuthStatus, login, logout } from "./auth.js";
 
 const CLI_VERSION = "0.1.0";
-const json = process.argv.includes("--json");
-const command = process.argv.slice(2).filter(arg => !arg.startsWith("--"));
+const args = process.argv.slice(2);
+const json = args.includes("--json");
+const optionValue = (name: string): string | undefined => {
+	const index = args.indexOf(name);
+	return index >= 0 ? args[index + 1] : undefined;
+};
+const valueOptions = new Set(["--timeout"]);
+const command: string[] = [];
+for (let index = 0; index < args.length; index += 1) {
+	if (valueOptions.has(args[index])) { index += 1; continue; }
+	if (!args[index].startsWith("--")) command.push(args[index]);
+}
 const output = (value: unknown, code = 0): void => {
 	if (json) console.log(JSON.stringify(value));
 	else if (typeof value === "string") console.log(value);
@@ -51,5 +62,35 @@ if (group === "runtime" && action === "update") {
 		errorOutput("runtime_update_failed", error instanceof Error ? error.message : "Runtime update failed");
 	}
 }
-if (group === "auth" && action === "status") output({ authenticated: false });
+if (group === "login") {
+	try {
+		const timeoutValue = optionValue("--timeout");
+		const timeoutMs = timeoutValue === undefined ? undefined : Number(timeoutValue) * 1000;
+		if (timeoutMs !== undefined && (!Number.isFinite(timeoutMs) || timeoutMs <= 0)) throw new Error("--timeout must be a positive number of seconds");
+		const session = await login({
+			noBrowser: args.includes("--no-browser"),
+			timeoutMs,
+			onStarted: challenge => {
+				if (!json) console.log(`Open ${challenge.verificationUrl}\nEnter code: ${challenge.userCode}`);
+			}
+		});
+		output({ status: "authenticated", session });
+	} catch (error) {
+		errorOutput("authentication_failed", error instanceof Error ? error.message : "Authentication failed", 3);
+	}
+}
+if (group === "logout") {
+	try {
+		output({ status: "logged-out", ...(await logout()) });
+	} catch (error) {
+		errorOutput("logout_failed", error instanceof Error ? error.message : "Logout failed", 3);
+	}
+}
+if (group === "auth" && action === "status") {
+	try {
+		output(await getAuthStatus());
+	} catch (error) {
+		errorOutput("authentication_status_failed", error instanceof Error ? error.message : "Authentication status failed", 3);
+	}
+}
 output({ error: "unknown_command", command: command.join(" "), host: os.hostname() }, 1);

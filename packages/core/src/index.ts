@@ -47,3 +47,32 @@ export interface ZLoginRuntimeReleaseManifest {
 }
 
 export const ZLOGIN_RUNTIME_PROTOCOL_VERSION = 1;
+
+export interface ZLoginRuntimeIdentitySummary {
+	userId: string;
+	displayName: string;
+	teamId?: string;
+	teamName?: string;
+}
+
+export interface ZLoginRuntimeAuthStatus {
+	authenticated: boolean;
+	identity?: ZLoginRuntimeIdentitySummary;
+	expiresAt?: string;
+}
+
+/** loginId 是 Runtime 本地会话标识，云端 device code 不会暴露给 CLI。 */
+export interface ZLoginRuntimeDeviceLoginStart {
+	loginId: string;
+	userCode: string;
+	verificationUrl: string;
+	verificationUrlComplete?: string;
+	expiresAt: string;
+	pollIntervalMs: number;
+}
+
+export interface ZLoginRuntimeDeviceLoginPoll {
+	status: "pending" | "slow_down" | "authorized" | "expired" | "denied";
+	retryAfterMs?: number;
+	session?: ZLoginRuntimeAuthStatus;
+}
