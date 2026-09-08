@@ -5,6 +5,7 @@ import * as process from "node:process";
 import { downloadAndInstallRuntime, fetchReleaseManifest, readCurrentRuntime } from "./runtime.js";
 import { getRuntimeStatus, startRuntime, stopRuntime } from "./supervisor.js";
 import { getAuthStatus, login, logout } from "./auth.js";
+import { getProfileStatus, listProfiles, OpenApiRequestError, startProfile, stopProfile } from "./openapi.js";
 
 const CLI_VERSION = "0.1.0";
 const args = process.argv.slice(2);
@@ -28,6 +29,12 @@ const output = (value: unknown, code = 0): void => {
 const errorOutput = (code: string, message: string, exitCode = 2): void => output({ error: code, message }, exitCode);
 
 const [group = "version", action] = command;
+const handleOpenApiError = (error: unknown): void => {
+	if (error instanceof OpenApiRequestError) {
+		output({ error: error.code, message: error.message, status: error.status, requestId: error.requestId }, 4);
+	}
+	errorOutput("openapi_request_failed", error instanceof Error ? error.message : "Open API request failed", 4);
+};
 if (group === "version") output({ cliVersion: CLI_VERSION, protocolVersion: 1 });
 if (group === "doctor") {
 	const current = await readCurrentRuntime();
@@ -91,6 +98,20 @@ if (group === "auth" && action === "status") {
 		output(await getAuthStatus());
 	} catch (error) {
 		errorOutput("authentication_status_failed", error instanceof Error ? error.message : "Authentication status failed", 3);
+	}
+}
+if (group === "profile") {
+	try {
+		if (action === "list") output(await listProfiles());
+		const profileCode = command[2];
+		if (!profileCode) throw new Error(`profile ${action ?? "command"} requires a profile code`);
+		const selector = { profileCode };
+		if (action === "start") output(await startProfile(selector));
+		if (action === "status") output(await getProfileStatus(selector));
+		if (action === "stop") output(await stopProfile(selector));
+		throw new Error(`Unknown profile command: ${action ?? ""}`);
+	} catch (error) {
+		handleOpenApiError(error);
 	}
 }
 output({ error: "unknown_command", command: command.join(" "), host: os.hostname() }, 1);
