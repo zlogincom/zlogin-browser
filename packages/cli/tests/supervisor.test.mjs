@@ -27,11 +27,12 @@ server.listen(0, "127.0.0.1", async () => {
 
 test("starts, reuses, health-checks and stops one Runtime instance", async t => {
 	const home = await mkdtemp(join(tmpdir(), "zlogin-cli-supervisor-"));
-	const fixture = join(home, "fixture.mjs");
 	const version = "0.1.0-test";
-	await writeFile(fixture, fixtureSource);
-	await writeFile(join(home, "current.json"), JSON.stringify({ version }));
 	await mkdir(join(home, version), { recursive: true });
+	const fixture = join(home, version, "fixture.mjs");
+	await writeFile(fixture, fixtureSource);
+	await writeFile(join(home, version, "manifest.json"), JSON.stringify({ entryPoint: "fixture.mjs" }));
+	await writeFile(join(home, "current.json"), JSON.stringify({ version }));
 	const previousHome = process.env.ZLOGIN_RUNTIME_HOME;
 	process.env.ZLOGIN_RUNTIME_HOME = home;
 	t.after(async () => {
@@ -52,7 +53,7 @@ test("starts, reuses, health-checks and stops one Runtime instance", async t => 
 	assert.equal(stopped.running, false);
 	assert.equal(stopped.endpoint, null);
 
-	const restarted = await requireRuntimeEndpoint({ executable: process.execPath, launchArgs: [fixture], timeoutMs: 5000, intervalMs: 25 });
+	const restarted = await requireRuntimeEndpoint({ timeoutMs: 5000, intervalMs: 25 });
 	assert.equal(restarted.version, version);
 	assert.equal((await getRuntimeStatus()).running, true);
 });

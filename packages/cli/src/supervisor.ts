@@ -88,12 +88,21 @@ export const runtimeHealth = async (endpoint: RuntimeEndpoint, timeoutMs = 1500)
 	}
 };
 
-const locateExecutable = async (installed: InstalledRuntime): Promise<string> => {
+interface RuntimeLaunchTarget {
+	executable: string;
+	args: string[];
+}
+
+const locateLaunchTarget = async (installed: InstalledRuntime): Promise<RuntimeLaunchTarget> => {
 	try {
 		const manifest = JSON.parse(await readFile(path.join(installed.path, "manifest.json"), "utf8")) as { entryPoint?: string };
 		if (manifest.entryPoint && !path.isAbsolute(manifest.entryPoint)) {
 			const candidate = path.resolve(installed.path, manifest.entryPoint);
-			if (candidate.startsWith(`${path.resolve(installed.path)}${path.sep}`) && await stat(candidate).then(() => true).catch(() => false)) return candidate;
+			if (candidate.startsWith(`${path.resolve(installed.path)}${path.sep}`) && await stat(candidate).then(() => true).catch(() => false)) {
+				return [".js", ".mjs", ".cjs"].includes(path.extname(candidate).toLowerCase())
+					? { executable: process.execPath, args: [candidate] }
+					: { executable: candidate, args: [] };
+			}
 		}
 	} catch {
 		// Fall through to conventional packaged names for older manifests.
@@ -101,7 +110,7 @@ const locateExecutable = async (installed: InstalledRuntime): Promise<string> =>
 	const names = process.platform === "win32" ? ["zlogin-runtime.exe", "runtime.exe"] : ["zlogin-runtime", "runtime"];
 	for (const name of names) {
 		const candidate = path.join(installed.path, name);
-		if (await stat(candidate).then(() => true).catch(() => false)) return candidate;
+		if (await stat(candidate).then(() => true).catch(() => false)) return { executable: candidate, args: [] };
 	}
 	throw new Error("Installed Runtime executable was not found");
 };
@@ -131,11 +140,13 @@ export const startRuntime = async (options: StartRuntimeOptions = {}): Promise<R
 	const existing = await getRuntimeStatus();
 	if (existing.running && existing.endpoint) return existing.endpoint;
 	if (!existing.installed) throw new Error("Runtime is not installed");
-	const executable = options.executable ?? await locateExecutable(existing.installed);
+	const target = options.executable
+		? { executable: options.executable, args: [] }
+		: await locateLaunchTarget(existing.installed);
 	const endpointFile = endpointPath();
 	await rm(endpointFile, { force: true });
-	const args = [...(options.launchArgs ?? []), "--endpoint-file", endpointFile];
-	const child = spawn(executable, args, {
+	const args = [...target.args, ...(options.launchArgs ?? []), "--endpoint-file", endpointFile];
+	const child = spawn(target.executable, args, {
 		cwd: existing.installed.path,
 		stdio: "ignore",
 		detached: false,

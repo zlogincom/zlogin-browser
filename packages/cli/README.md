@@ -25,7 +25,7 @@ zlogin kernel download status --task-id <taskId> [--json]
 
 Exit codes: `0` success, `1` invalid/unknown command, `2` unavailable, unconfigured, or failed Runtime installation.
 
-`runtime start` reads the installed manifest `entryPoint` (or a platform default), launches the Runtime with an endpoint-file contract, then waits for a loopback health response. `runtime stop` sends an authenticated local shutdown request and removes stale endpoint state after the process exits.
+`runtime start` reads the installed manifest `entryPoint` (or a platform default), launches native entries directly and JavaScript entries with the CLI's Node executable, then waits for the loopback endpoint-file health contract. `runtime stop` sends an authenticated local shutdown request and removes stale endpoint state after the process exits.
 
 `login`, `logout`, and `auth status` call the authenticated local Runtime control protocol. The CLI displays only the verification URL, user code, and final identity summary; cloud refresh tokens remain owned by the Runtime and are never returned in CLI output.
 Runtime-backed commands reuse a healthy process and automatically start an installed Runtime when it is not running.
