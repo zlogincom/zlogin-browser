@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { requireRuntimeEndpoint } from "../dist/control.js";
 import { getRuntimeStatus, startRuntime, stopRuntime } from "../dist/supervisor.js";
 
 const fixtureSource = `
@@ -50,4 +51,8 @@ test("starts, reuses, health-checks and stops one Runtime instance", async t => 
 	const stopped = await getRuntimeStatus();
 	assert.equal(stopped.running, false);
 	assert.equal(stopped.endpoint, null);
+
+	const restarted = await requireRuntimeEndpoint({ executable: process.execPath, launchArgs: [fixture], timeoutMs: 5000, intervalMs: 25 });
+	assert.equal(restarted.version, version);
+	assert.equal((await getRuntimeStatus()).running, true);
 });

@@ -28,6 +28,7 @@ Exit codes: `0` success, `1` invalid/unknown command, `2` unavailable, unconfigu
 `runtime start` reads the installed manifest `entryPoint` (or a platform default), launches the Runtime with an endpoint-file contract, then waits for a loopback health response. `runtime stop` sends an authenticated local shutdown request and removes stale endpoint state after the process exits.
 
 `login`, `logout`, and `auth status` call the authenticated local Runtime control protocol. The CLI displays only the verification URL, user code, and final identity summary; cloud refresh tokens remain owned by the Runtime and are never returned in CLI output.
+Runtime-backed commands reuse a healthy process and automatically start an installed Runtime when it is not running.
 
 Profile commands use the local Open API. Configure it with `ZLOGIN_OPENAPI_URL` (defaults to `http://127.0.0.1:50025`) and `ZLOGIN_OPENAPI_KEY`. The URL must use loopback HTTP, and the API key is never accepted as a command argument.
 

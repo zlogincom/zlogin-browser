@@ -1,9 +1,9 @@
-import { getRuntimeStatus, type RuntimeEndpoint } from "./supervisor.js";
+import { getRuntimeStatus, startRuntime, type RuntimeEndpoint, type StartRuntimeOptions } from "./supervisor.js";
 
-export const requireRuntimeEndpoint = async (): Promise<RuntimeEndpoint> => {
+export const requireRuntimeEndpoint = async (startOptions: StartRuntimeOptions = {}): Promise<RuntimeEndpoint> => {
 	const status = await getRuntimeStatus();
-	if (!status.running || !status.endpoint) throw new Error("Runtime is not running");
-	return status.endpoint;
+	if (status.running && status.endpoint) return status.endpoint;
+	return startRuntime(startOptions);
 };
 
 export const runtimeControlRequest = async <T>(pathname: string, init: RequestInit = {}, timeoutMs = 5000): Promise<T> => {
