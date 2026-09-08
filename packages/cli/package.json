@@ -7,7 +7,7 @@
 	"license": "UNLICENSED",
 	"bin": { "zlogin": "dist/index.js" },
 	"files": ["dist"],
-	"scripts": { "build": "tsc -p tsconfig.json", "check": "tsc -p tsconfig.json --noEmit" },
+	"scripts": { "build": "tsc -p tsconfig.json", "check": "tsc -p tsconfig.json --noEmit", "test": "node --test tests/*.test.mjs" },
 	"dependencies": { "zlogin-core": "workspace:*" },
 	"devDependencies": { "@types/node": "^24.3.0", "typescript": "^5.9.2" }
 }

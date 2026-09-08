@@ -24,3 +24,26 @@ export interface ZLoginResult<TData> {
 	etag: string | null;
 	rateLimit: ZLoginRateLimit;
 }
+
+export type ZLoginRuntimePlatform = "win32" | "darwin" | "linux";
+export type ZLoginRuntimeChannel = "stable" | "beta" | "canary";
+
+/** Runtime 发布清单。downloadUrl 只能来自受信任 API，CLI 不接受命令行覆盖。 */
+export interface ZLoginRuntimeReleaseManifest {
+	runtimeVersion: string;
+	protocolVersion: number;
+	platform: ZLoginRuntimePlatform;
+	arch: string;
+	channel: ZLoginRuntimeChannel;
+	minApiVersion: string;
+	minCliVersion: string;
+	downloadUrl: string;
+	fileSize: number;
+	sha256: string;
+	signature: string;
+	signatureKeyId: string;
+	publishedAt: string;
+	status: "draft" | "testing" | "active" | "paused" | "revoked";
+}
+
+export const ZLOGIN_RUNTIME_PROTOCOL_VERSION = 1;
