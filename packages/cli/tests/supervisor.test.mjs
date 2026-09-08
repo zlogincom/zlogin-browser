@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { requireRuntimeEndpoint } from "../dist/control.js";
+import { promisify } from "node:util";
 import { getRuntimeStatus, startRuntime, stopRuntime } from "../dist/supervisor.js";
+
+const execFileAsync = promisify(execFile);
 
 const fixtureSource = `
 import { createServer } from "node:http";
@@ -53,7 +56,14 @@ test("starts, reuses, health-checks and stops one Runtime instance", async t => 
 	assert.equal(stopped.running, false);
 	assert.equal(stopped.endpoint, null);
 
-	const restarted = await requireRuntimeEndpoint({ timeoutMs: 5000, intervalMs: 25 });
+	const launcher = join(home, "launcher.mjs");
+	await writeFile(
+		launcher,
+		`import { requireRuntimeEndpoint } from ${JSON.stringify(new URL("../dist/control.js", import.meta.url).href)};\nawait requireRuntimeEndpoint({ timeoutMs: 5000, intervalMs: 25 });\n`
+	);
+	await execFileAsync(process.execPath, [launcher], { env: { ...process.env, ZLOGIN_RUNTIME_HOME: home } });
+	const restarted = (await getRuntimeStatus()).endpoint;
+	assert.ok(restarted);
 	assert.equal(restarted.version, version);
 	assert.equal((await getRuntimeStatus()).running, true);
 });

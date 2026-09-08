@@ -149,7 +149,7 @@ export const startRuntime = async (options: StartRuntimeOptions = {}): Promise<R
 	const child = spawn(target.executable, args, {
 		cwd: existing.installed.path,
 		stdio: "ignore",
-		detached: false,
+		detached: true,
 		windowsHide: true,
 		env: { ...process.env, ZLOGIN_RUNTIME_VERSION: existing.installed.version, ZLOGIN_RUNTIME_BOOT_ID: randomUUID() }
 	});
