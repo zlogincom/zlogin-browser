@@ -2,10 +2,12 @@
 	"name": "@zlogin/cli",
 	"version": "0.1.0",
 	"private": true,
-	"description": "ZLogin command-line interface scaffold",
+	"description": "ZLogin Runtime command-line interface",
 	"type": "module",
 	"license": "UNLICENSED",
-	"dependencies": {
-		"zlogin-core": "workspace:*"
-	}
+	"bin": { "zlogin": "dist/index.js" },
+	"files": ["dist"],
+	"scripts": { "build": "tsc -p tsconfig.json", "check": "tsc -p tsconfig.json --noEmit" },
+	"dependencies": { "zlogin-core": "workspace:*" },
+	"devDependencies": { "@types/node": "^24.3.0", "typescript": "^5.9.2" }
 }

@@ -1,5 +1,13 @@
 # @zlogin/cli
 
-The planned command-line interface for local ZLogin operations.
+Windows-first ZLogin Runtime CLI skeleton on the `cli` branch. Commands expose stable JSON/human output while Runtime and Open API integration is added incrementally.
 
-The CLI will provide stable commands, JSON arguments, shell completion, and human-readable output while delegating API semantics to `zlogin-core`.
+```text
+zlogin version
+zlogin doctor [--json]
+zlogin runtime status [--json]
+zlogin runtime update [--json]
+zlogin auth status [--json]
+```
+
+Exit codes: `0` success, `1` invalid/unknown command, `2` unavailable or unconfigured Runtime.
