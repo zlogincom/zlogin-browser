@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as process from "node:process";
 import { getAuthStatus, login, logout } from "./auth.js";
 import { getProfileStatus, listProfiles, OpenApiRequestError, startProfile, stopProfile } from "./openapi.js";
+import { ensureKernel, getKernelDownloadStatus, listKernels } from "./kernel.js";
 import { downloadAndInstallRuntime, fetchReleaseManifest, readCurrentRuntime } from "./runtime.js";
 import { getRuntimeStatus, startRuntime, stopRuntime } from "./supervisor.js";
 
@@ -14,7 +15,7 @@ const optionValue = (name: string): string | undefined => {
 	const index = args.indexOf(name);
 	return index >= 0 ? args[index + 1] : undefined;
 };
-const valueOptions = new Set(["--timeout"]);
+const valueOptions = new Set(["--timeout", "--browser-version", "--task-id"]);
 const command: string[] = [];
 for (let index = 0; index < args.length; index += 1) {
 	if (valueOptions.has(args[index])) {
@@ -118,6 +119,24 @@ const run = async (): Promise<number> => {
 			throw new Error(`Unknown profile command: ${action ?? ""}`);
 		} catch (error) {
 			return handleOpenApiError(error);
+		}
+	}
+	if (group === "kernel") {
+		try {
+			if (action === "list") return output(await listKernels());
+			if (action === "ensure") {
+				const browserVersion = optionValue("--browser-version");
+				if (!browserVersion) throw new Error("kernel ensure requires --browser-version");
+				return output(await ensureKernel(browserVersion));
+			}
+			if (action === "download" && command[2] === "status") {
+				const taskId = optionValue("--task-id");
+				if (!taskId) throw new Error("kernel download status requires --task-id");
+				return output(await getKernelDownloadStatus(taskId));
+			}
+			throw new Error(`Unknown kernel command: ${command.slice(1).join(" ")}`);
+		} catch (error) {
+			return errorOutput("kernel_command_failed", error instanceof Error ? error.message : "Kernel command failed", 5);
 		}
 	}
 	return output({ error: "unknown_command", command: command.join(" "), host: os.hostname() }, 1);
