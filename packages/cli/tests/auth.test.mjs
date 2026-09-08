@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { createServer } from "node:http";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import test from "node:test";
 import { getAuthStatus, login, logout } from "../dist/auth.js";
+
+const execFileAsync = promisify(execFile);
 
 test("uses the authenticated Runtime control protocol for device login", async t => {
 	const home = await mkdtemp(join(tmpdir(), "zlogin-cli-auth-"));
@@ -44,6 +49,11 @@ test("uses the authenticated Runtime control protocol for device login", async t
 		else process.env.ZLOGIN_RUNTIME_HOME = previousHome;
 	});
 	assert.deepEqual(await getAuthStatus(), { authenticated: false });
+	const cliPath = fileURLToPath(new URL("../dist/index.js", import.meta.url));
+	const childResult = await execFileAsync(process.execPath, [cliPath, "auth", "status", "--json"], {
+		env: { ...process.env, ZLOGIN_RUNTIME_HOME: home }
+	});
+	assert.deepEqual(JSON.parse(childResult.stdout), { authenticated: false });
 	let challenge;
 	const session = await login({ noBrowser: true, timeoutMs: 3000, onStarted: value => { challenge = value; } });
 	assert.equal(challenge.userCode, "ABCD-EFGH");
