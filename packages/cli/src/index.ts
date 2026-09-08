@@ -3,6 +3,7 @@
 import * as os from "node:os";
 import * as process from "node:process";
 import { downloadAndInstallRuntime, fetchReleaseManifest, readCurrentRuntime } from "./runtime.js";
+import { getRuntimeStatus, startRuntime, stopRuntime } from "./supervisor.js";
 
 const CLI_VERSION = "0.1.0";
 const json = process.argv.includes("--json");
@@ -19,11 +20,26 @@ const [group = "version", action] = command;
 if (group === "version") output({ cliVersion: CLI_VERSION, protocolVersion: 1 });
 if (group === "doctor") {
 	const current = await readCurrentRuntime();
-	output({ ok: true, platform: process.platform, arch: process.arch, runtime: current ?? "not-installed" });
+	const runtime = await getRuntimeStatus();
+	output({ ok: true, platform: process.platform, arch: process.arch, runtime: runtime.running ? runtime.endpoint : current ?? "not-installed" });
 }
 if (group === "runtime" && action === "status") {
-	const current = await readCurrentRuntime();
-	output({ status: current ? "installed" : "not-installed", protocolVersion: 1, platform: process.platform, arch: process.arch, current });
+	const runtime = await getRuntimeStatus();
+	output({ status: runtime.running ? "running" : runtime.installed ? "installed" : "not-installed", protocolVersion: 1, platform: process.platform, arch: process.arch, current: runtime.installed, endpoint: runtime.endpoint });
+}
+if (group === "runtime" && action === "start") {
+	try {
+		output({ status: "running", endpoint: await startRuntime() });
+	} catch (error) {
+		errorOutput("runtime_start_failed", error instanceof Error ? error.message : "Runtime start failed");
+	}
+}
+if (group === "runtime" && action === "stop") {
+	try {
+		output({ status: "stopped", wasRunning: await stopRuntime() });
+	} catch (error) {
+		errorOutput("runtime_stop_failed", error instanceof Error ? error.message : "Runtime stop failed");
+	}
 }
 if (group === "runtime" && action === "update") {
 	try {
