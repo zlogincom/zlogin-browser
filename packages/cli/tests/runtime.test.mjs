@@ -23,6 +23,13 @@ test("validateReleaseManifest rejects non-HTTPS artifact URLs", () => {
 	assert.throws(() => validateReleaseManifest({ status: "active", platform: process.platform, arch: process.arch, downloadUrl: "file:///tmp/runtime.tar", sha256: "a".repeat(64), fileSize: 1, signature: "sig", signatureKeyId: "key", runtimeVersion: "0.1.0", protocolVersion: 1, channel: "stable", minApiVersion: "2026-09", minCliVersion: "0.1.0", publishedAt: new Date().toISOString() }), /URL is not trusted/);
 });
 
+test("validateReleaseManifest rejects incompatible protocol and minimum CLI versions", () => {
+	const base = { status: "active", platform: process.platform, arch: process.arch, downloadUrl: "https://cdn.example.com/runtime.tar", sha256: "a".repeat(64), fileSize: 1, signature: "sig", signatureKeyId: "key", runtimeVersion: "0.1.0", protocolVersion: 1, channel: "stable", minApiVersion: "2026-09", minCliVersion: "0.1.0", publishedAt: new Date().toISOString() };
+	assert.throws(() => validateReleaseManifest({ ...base, protocolVersion: 2 }), /protocol version is unsupported/);
+	assert.throws(() => validateReleaseManifest({ ...base, minCliVersion: "0.2.0" }), /requires a newer CLI version/);
+	assert.throws(() => validateReleaseManifest({ ...base, minCliVersion: "invalid" }), /invalid minimum CLI version/);
+});
+
 test("downloads, verifies and atomically installs a signed Runtime archive", async t => {
 	const fixture = await makeArchive();
 	const { publicKey, privateKey } = generateKeyPairSync("ed25519");

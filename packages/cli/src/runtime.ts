@@ -8,6 +8,24 @@ import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import type { ZLoginRuntimeReleaseManifest } from "zlogin-core";
 
+const CURRENT_CLI_VERSION = "0.1.0";
+const CURRENT_RUNTIME_PROTOCOL_VERSION = 1;
+const SEMVER_PATTERN = /^(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.-]+)?$/;
+
+const parseVersion = (value: unknown, field: string): [number, number, number] => {
+	if (typeof value !== "string") throw new Error(`Runtime manifest has an invalid ${field}`);
+	const match = SEMVER_PATTERN.exec(value.trim());
+	if (!match) throw new Error(`Runtime manifest has an invalid ${field}`);
+	return [Number(match[1]), Number(match[2]), Number(match[3])];
+};
+
+const compareVersions = (left: [number, number, number], right: [number, number, number]): number => {
+	for (let index = 0; index < left.length; index += 1) {
+		if (left[index] !== right[index]) return left[index] - right[index];
+	}
+	return 0;
+};
+
 const execFileAsync = promisify(execFile);
 
 export interface InstalledRuntime {
@@ -36,6 +54,11 @@ export const readCurrentRuntime = async (): Promise<InstalledRuntime | null> => 
 export const validateReleaseManifest = (manifest: ZLoginRuntimeReleaseManifest): void => {
 	if (!manifest || manifest.status !== "active") throw new Error("Runtime release is not active");
 	if (manifest.platform !== process.platform || manifest.arch !== process.arch) throw new Error("Runtime release does not match this platform");
+	if (manifest.protocolVersion !== CURRENT_RUNTIME_PROTOCOL_VERSION) throw new Error("Runtime release protocol version is unsupported");
+	const minimumCliVersion = parseVersion(manifest.minCliVersion, "minimum CLI version");
+	if (compareVersions(minimumCliVersion, parseVersion(CURRENT_CLI_VERSION, "CLI version")) > 0) {
+		throw new Error("Runtime release requires a newer CLI version");
+	}
 	const download = new URL(manifest.downloadUrl);
 	if (download.protocol !== "https:" && !(download.protocol === "http:" && ["localhost", "127.0.0.1"].includes(download.hostname))) {
 		throw new Error("Runtime download URL is not trusted");
