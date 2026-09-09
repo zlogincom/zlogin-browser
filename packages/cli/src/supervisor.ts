@@ -72,6 +72,14 @@ const processExists = (pid: number): boolean => {
 	}
 };
 
+const waitForProcessExit = async (pid: number, timeoutMs = 500): Promise<boolean> => {
+	const deadline = Date.now() + timeoutMs;
+	while (processExists(pid) && Date.now() < deadline) {
+		await new Promise(resolve => setTimeout(resolve, 25));
+	}
+	return !processExists(pid);
+};
+
 export const runtimeHealth = async (endpoint: RuntimeEndpoint, timeoutMs = 1500): Promise<boolean> => {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -131,12 +139,18 @@ const waitForEndpoint = async (expectedVersion: string, timeoutMs: number, inter
 export const getRuntimeStatus = async (): Promise<RuntimeStatus> => {
 	const installed = await readCurrentRuntime();
 	const endpoint = await readRuntimeEndpoint();
-	const running = endpoint !== null && processExists(endpoint.pid) && await runtimeHealth(endpoint);
-	if (endpoint && !running && installed?.version === endpoint.version) await rm(endpointPath(), { force: true });
+	const processAlive = endpoint !== null && processExists(endpoint.pid);
+	const running = processAlive && endpoint !== null && await runtimeHealth(endpoint);
+	if (endpoint && !processAlive) await rm(endpointPath(), { force: true });
 	return { installed, endpoint: running ? endpoint : null, running };
 };
 
 export const startRuntime = async (options: StartRuntimeOptions = {}): Promise<RuntimeEndpoint> => {
+	const endpoint = await readRuntimeEndpoint();
+	if (endpoint && processExists(endpoint.pid)) {
+		if (await runtimeHealth(endpoint)) return endpoint;
+		throw new Error(`Runtime process ${endpoint.pid} is running but did not pass its health check`);
+	}
 	const existing = await getRuntimeStatus();
 	if (existing.running && existing.endpoint) return existing.endpoint;
 	if (!existing.installed) throw new Error("Runtime is not installed");
@@ -155,6 +169,20 @@ export const startRuntime = async (options: StartRuntimeOptions = {}): Promise<R
 	});
 	child.unref();
 	return waitForEndpoint(existing.installed.version, options.timeoutMs ?? 10000, options.intervalMs ?? 100);
+};
+
+/** 仅当请求使用的 Runtime PID 已退出时启动替代实例；存活但不健康的进程不会被覆盖。 */
+export const restartRuntimeAfterCrash = async (
+	failedEndpoint: RuntimeEndpoint,
+	options: StartRuntimeOptions = {}
+): Promise<RuntimeEndpoint | null> => {
+	if (!await waitForProcessExit(failedEndpoint.pid)) return null;
+	const current = await readRuntimeEndpoint();
+	if (current && current.pid !== failedEndpoint.pid && processExists(current.pid)) {
+		return await runtimeHealth(current) ? current : null;
+	}
+	await rm(endpointPath(), { force: true });
+	return startRuntime(options);
 };
 
 export const stopRuntime = async (timeoutMs = 5000): Promise<boolean> => {
