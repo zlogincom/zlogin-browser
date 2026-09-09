@@ -109,6 +109,7 @@ export const fetchReleaseManifest = async (endpoint: string, channel = "stable")
 	url.searchParams.set("channel", channel);
 	url.searchParams.set("platform", process.platform);
 	url.searchParams.set("arch", process.arch);
+	url.searchParams.set("protocol_version", String(CURRENT_RUNTIME_PROTOCOL_VERSION));
 	const response = await fetch(url);
 	if (!response.ok) throw new Error(`Runtime release manifest request failed (${response.status})`);
 	const manifest = (await response.json()) as ZLoginRuntimeReleaseManifest;

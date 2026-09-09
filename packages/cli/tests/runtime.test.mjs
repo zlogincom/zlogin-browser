@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import test from "node:test";
-import { downloadAndInstallRuntime, readCurrentRuntime, validateReleaseManifest } from "../dist/runtime.js";
+import { downloadAndInstallRuntime, fetchReleaseManifest, readCurrentRuntime, validateReleaseManifest } from "../dist/runtime.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -28,6 +28,40 @@ test("validateReleaseManifest rejects incompatible protocol and minimum CLI vers
 	assert.throws(() => validateReleaseManifest({ ...base, protocolVersion: 2 }), /protocol version is unsupported/);
 	assert.throws(() => validateReleaseManifest({ ...base, minCliVersion: "0.2.0" }), /requires a newer CLI version/);
 	assert.throws(() => validateReleaseManifest({ ...base, minCliVersion: "invalid" }), /invalid minimum CLI version/);
+});
+
+test("fetches the release manifest with the negotiated protocol query", async t => {
+	let requestUrl;
+	const server = createServer((request, response) => {
+		requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
+		response.setHeader("content-type", "application/json");
+		response.writeHead(200).end(JSON.stringify({
+			runtimeVersion: "0.1.0",
+			protocolVersion: 1,
+			platform: process.platform,
+			arch: process.arch,
+			channel: "stable",
+			minApiVersion: "2026-09",
+			minCliVersion: "0.1.0",
+			downloadUrl: "https://cdn.example.com/runtime.tar",
+			fileSize: 1,
+			sha256: "a".repeat(64),
+			signature: "sig",
+			signatureKeyId: "key",
+			publishedAt: new Date().toISOString(),
+			status: "active"
+		}));
+	});
+	await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+	const address = server.address();
+	const port = typeof address === "object" && address ? address.port : 0;
+	t.after(() => server.close());
+	await fetchReleaseManifest(`http://127.0.0.1:${port}/api/runtime/releases/latest`, "beta");
+	assert.ok(requestUrl);
+	assert.equal(requestUrl.searchParams.get("channel"), "beta");
+	assert.equal(requestUrl.searchParams.get("platform"), process.platform);
+	assert.equal(requestUrl.searchParams.get("arch"), process.arch);
+	assert.equal(requestUrl.searchParams.get("protocol_version"), "1");
 });
 
 test("downloads, verifies and atomically installs a signed Runtime archive", async t => {
