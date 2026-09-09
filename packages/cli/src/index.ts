@@ -7,6 +7,7 @@ import { getProfileStatus, listProfiles, OpenApiRequestError, startProfile, stop
 import { ensureKernel, getKernelDownloadStatus, listKernels } from "./kernel.js";
 import { downloadAndInstallRuntime, fetchReleaseManifest, readCurrentRuntime } from "./runtime.js";
 import { getRuntimeStatus, startRuntime, stopRuntime } from "./supervisor.js";
+import { getProfileStatusWithRuntime, startProfileWithRuntime, stopProfileWithRuntime } from "./runtimeProfile.js";
 
 const CLI_VERSION = "0.1.0";
 const args = process.argv.slice(2);
@@ -113,9 +114,9 @@ const run = async (): Promise<number> => {
 			const profileCode = command[2];
 			if (!profileCode) throw new Error(`profile ${action ?? "command"} requires a profile code`);
 			const selector = { profileCode };
-			if (action === "start") return output(await startProfile(selector));
-			if (action === "status") return output(await getProfileStatus(selector));
-			if (action === "stop") return output(await stopProfile(selector));
+			if (action === "start") return output((await startProfileWithRuntime(selector)) ?? await startProfile(selector));
+			if (action === "status") return output((await getProfileStatusWithRuntime(selector)) ?? await getProfileStatus(selector));
+			if (action === "stop") return output((await stopProfileWithRuntime(selector)) ?? await stopProfile(selector));
 			throw new Error(`Unknown profile command: ${action ?? ""}`);
 		} catch (error) {
 			return handleOpenApiError(error);
