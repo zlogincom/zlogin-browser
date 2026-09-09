@@ -16,7 +16,7 @@ test("resolves an Open API profile code and delegates profile lifecycle to Runti
 		for await (const chunk of request) body += chunk;
 		requests.push({ method: request.method, url: request.url, runtimeToken: request.headers["x-zlogin-runtime-token"], apiKey: request.headers["x-api-key"], body: body ? JSON.parse(body) : null });
 		response.setHeader("content-type", "application/json");
-		if (request.url === "/health") return response.end(JSON.stringify({ ok: true }));
+		if (request.url === "/health") return response.end(JSON.stringify({ ok: true, protocolVersion: 1, runtimeVersion: version }));
 		if (request.url === "/api/v1/browser-profiles/list") return response.end(JSON.stringify({ success: true, code: "ok", message: "OK", requestId: "list-1", data: { items: [{ profileId: 73, profileCode: "demo-profile" }] } }));
 		if (request.url === "/profile/start") return response.end(JSON.stringify({ profileId: 73, runtimeId: "runtime-73", pid: 1234, protocol: "cdp", debuggerAddress: "127.0.0.1:9222", webSocketDebuggerUrl: "ws://127.0.0.1:9222/devtools/browser/runtime-73", expiresAt: "2026-09-09T12:00:00Z" }));
 		if (request.url === "/profile/73/status") return response.end(JSON.stringify({ profileId: 73, state: "running", runtimeId: "runtime-73" }));

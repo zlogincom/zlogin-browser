@@ -23,7 +23,7 @@ test("uses the authenticated Runtime control protocol for device login", async t
 			response.writeHead(401).end(JSON.stringify({ message: "Unauthorized" }));
 			return;
 		}
-		if (request.url === "/health") response.writeHead(200).end(JSON.stringify({ ok: true }));
+		if (request.url === "/health") response.writeHead(200).end(JSON.stringify({ ok: true, protocolVersion: 1, runtimeVersion: version }));
 		else if (request.url === "/auth/status") response.writeHead(200).end(JSON.stringify({ authenticated: false }));
 		else if (request.url === "/auth/login/start") response.writeHead(200).end(JSON.stringify({ loginId: "login-1", userCode: "ABCD-EFGH", verificationUrl: "https://example.com/device", expiresAt: new Date(Date.now() + 5000).toISOString(), pollIntervalMs: 100 }));
 		else if (request.url === "/auth/login/poll") {

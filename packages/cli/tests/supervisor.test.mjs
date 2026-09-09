@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { createServer } from "node:http";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 import { runtimeControlRequest } from "../dist/control.js";
-import { getRuntimeStatus, startRuntime, stopRuntime } from "../dist/supervisor.js";
+import { getRuntimeStatus, runtimeHealth, startRuntime, stopRuntime } from "../dist/supervisor.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -23,7 +24,7 @@ await writeFile(launchCountFile, String(launchCount));
 const token = randomBytes(24).toString("hex");
 const server = createServer(async (request, response) => {
   if (request.headers["x-zlogin-runtime-token"] !== token) { response.writeHead(401); response.end(); return; }
-  if (request.url === "/health") { response.writeHead(200); response.end(JSON.stringify({ ok: true })); return; }
+  if (request.url === "/health") { response.writeHead(200); response.end(JSON.stringify({ ok: true, protocolVersion: 1, runtimeVersion: process.env.ZLOGIN_RUNTIME_VERSION })); return; }
   if (request.url === "/business-error") { response.writeHead(409, { "content-type": "application/json" }); response.end(JSON.stringify({ message: "Runtime business conflict" })); return; }
   if (request.url === "/disconnect") { request.socket.destroy(); return; }
   if (request.url === "/crash-once") {
@@ -42,6 +43,18 @@ server.listen(0, "127.0.0.1", async () => {
   await writeFile(endpointFile, JSON.stringify({ pid: process.pid, version: process.env.ZLOGIN_RUNTIME_VERSION, port: address.port, token, healthUrl: "http://127.0.0.1:" + address.port + "/health", startedAt: new Date().toISOString() }));
 });
 `;
+
+test("rejects a Runtime health response with an incompatible protocol", async t => {
+	const server = createServer((request, response) => {
+		response.setHeader("content-type", "application/json");
+		response.end(JSON.stringify({ ok: true, protocolVersion: 2, runtimeVersion: "0.1.0" }));
+	});
+	await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+	const address = server.address();
+	const port = typeof address === "object" && address ? address.port : 0;
+	t.after(() => server.close());
+	assert.equal(await runtimeHealth({ pid: process.pid, version: "0.1.0", port, token: "health-token-123456", healthUrl: `http://127.0.0.1:${port}/health`, startedAt: new Date().toISOString() }), false);
+});
 
 test("starts, reuses, health-checks and stops one Runtime instance", async t => {
 	const home = await mkdtemp(join(tmpdir(), "zlogin-cli-supervisor-"));

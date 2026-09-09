@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { chmod, readFile, rm, stat, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 import * as process from "node:process";
+import { ZLOGIN_RUNTIME_PROTOCOL_VERSION } from "zlogin-core";
 import { runtimeRoot, readCurrentRuntime, type InstalledRuntime } from "./runtime.js";
 
 export interface RuntimeEndpoint {
@@ -88,7 +89,11 @@ export const runtimeHealth = async (endpoint: RuntimeEndpoint, timeoutMs = 1500)
 			headers: { "x-zlogin-runtime-token": endpoint.token },
 			signal: controller.signal
 		});
-		return response.ok;
+		if (!response.ok) return false;
+		const body = await response.json().catch(() => null) as { ok?: unknown; protocolVersion?: unknown; runtimeVersion?: unknown } | null;
+		return body?.ok === true
+			&& body.protocolVersion === ZLOGIN_RUNTIME_PROTOCOL_VERSION
+			&& body.runtimeVersion === endpoint.version;
 	} catch {
 		return false;
 	} finally {

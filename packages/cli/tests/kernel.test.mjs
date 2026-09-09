@@ -17,7 +17,7 @@ test("kernel commands use the authenticated Runtime control protocol", async t =
 		requests.push({ method: request.method, url: request.url, token: request.headers["x-zlogin-runtime-token"], body: body ? JSON.parse(body) : null });
 		response.setHeader("content-type", "application/json");
 		if (request.headers["x-zlogin-runtime-token"] !== token) response.writeHead(401).end(JSON.stringify({ message: "Unauthorized" }));
-		else if (request.url === "/health") response.writeHead(200).end(JSON.stringify({ ok: true }));
+		else if (request.url === "/health") response.writeHead(200).end(JSON.stringify({ ok: true, protocolVersion: 1, runtimeVersion: version }));
 		else if (request.url === "/kernel/list") response.writeHead(200).end(JSON.stringify({ items: [{ browserVersion: "130", buildVersion: "1", installed: true, inUse: false }] }));
 		else if (request.url === "/kernel/ensure") response.writeHead(200).end(JSON.stringify({ status: "downloading", browserVersion: "131", taskId: "task-1" }));
 		else if (request.url === "/kernel/download/status/task-1") response.writeHead(200).end(JSON.stringify({ taskId: "task-1", status: "running", progress: 50 }));
