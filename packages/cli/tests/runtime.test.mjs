@@ -20,11 +20,11 @@ const makeArchive = async () => {
 };
 
 test("validateReleaseManifest rejects non-HTTPS artifact URLs", () => {
-	assert.throws(() => validateReleaseManifest({ status: "active", platform: process.platform, arch: process.arch, downloadUrl: "file:///tmp/runtime.tar", sha256: "a".repeat(64), fileSize: 1, signature: "sig", signatureKeyId: "key", runtimeVersion: "0.1.0", protocolVersion: 1, channel: "stable", minApiVersion: "2026-09", minCliVersion: "0.1.0", publishedAt: new Date().toISOString() }), /URL is not trusted/);
+	assert.throws(() => validateReleaseManifest({ releaseId: "00000000-0000-4000-8000-000000000001", status: "active", platform: process.platform, arch: process.arch, downloadUrl: "file:///tmp/runtime.tar", sha256: "a".repeat(64), fileSize: 1, signature: "sig", signatureKeyId: "key", runtimeVersion: "0.1.0", protocolVersion: 1, channel: "stable", minApiVersion: "2026-09", minCliVersion: "0.1.0", publishedAt: new Date().toISOString() }), /URL is not trusted/);
 });
 
 test("validateReleaseManifest rejects incompatible protocol and minimum CLI versions", () => {
-	const base = { status: "active", platform: process.platform, arch: process.arch, downloadUrl: "https://cdn.example.com/runtime.tar", sha256: "a".repeat(64), fileSize: 1, signature: "sig", signatureKeyId: "key", runtimeVersion: "0.1.0", protocolVersion: 1, channel: "stable", minApiVersion: "2026-09", minCliVersion: "0.1.0", publishedAt: new Date().toISOString() };
+	const base = { releaseId: "00000000-0000-4000-8000-000000000001", status: "active", platform: process.platform, arch: process.arch, downloadUrl: "https://cdn.example.com/runtime.tar", sha256: "a".repeat(64), fileSize: 1, signature: "sig", signatureKeyId: "key", runtimeVersion: "0.1.0", protocolVersion: 1, channel: "stable", minApiVersion: "2026-09", minCliVersion: "0.1.0", publishedAt: new Date().toISOString() };
 	assert.throws(() => validateReleaseManifest({ ...base, protocolVersion: 2 }), /protocol version is unsupported/);
 	assert.throws(() => validateReleaseManifest({ ...base, minCliVersion: "0.2.0" }), /requires a newer CLI version/);
 	assert.throws(() => validateReleaseManifest({ ...base, minCliVersion: "invalid" }), /invalid minimum CLI version/);
@@ -36,6 +36,7 @@ test("fetches the release manifest with the negotiated protocol query", async t 
 		requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
 		response.setHeader("content-type", "application/json");
 		response.writeHead(200).end(JSON.stringify({
+			releaseId: "00000000-0000-4000-8000-000000000001",
 			runtimeVersion: "0.1.0",
 			protocolVersion: 1,
 			platform: process.platform,
@@ -68,6 +69,7 @@ test("downloads, verifies and atomically installs a signed Runtime archive", asy
 	const fixture = await makeArchive();
 	const { publicKey, privateKey } = generateKeyPairSync("ed25519");
 	const manifest = {
+		releaseId: "00000000-0000-4000-8000-000000000002",
 		runtimeVersion: "0.1.0-test",
 		protocolVersion: 1,
 		platform: process.platform,

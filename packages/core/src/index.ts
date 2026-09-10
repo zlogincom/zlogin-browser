@@ -30,6 +30,7 @@ export type ZLoginRuntimeChannel = "stable" | "beta" | "canary";
 
 /** Runtime 发布清单。downloadUrl 只能来自受信任 API，CLI 不接受命令行覆盖。 */
 export interface ZLoginRuntimeReleaseManifest {
+	releaseId: string;
 	runtimeVersion: string;
 	protocolVersion: number;
 	platform: ZLoginRuntimePlatform;

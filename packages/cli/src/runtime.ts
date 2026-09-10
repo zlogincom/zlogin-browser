@@ -53,6 +53,7 @@ export const readCurrentRuntime = async (): Promise<InstalledRuntime | null> => 
 
 export const validateReleaseManifest = (manifest: ZLoginRuntimeReleaseManifest): void => {
 	if (!manifest || manifest.status !== "active") throw new Error("Runtime release is not active");
+	if (typeof manifest.releaseId !== "string" || !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(manifest.releaseId)) throw new Error("Runtime manifest has an invalid release id");
 	if (manifest.platform !== process.platform || manifest.arch !== process.arch) throw new Error("Runtime release does not match this platform");
 	if (manifest.protocolVersion !== CURRENT_RUNTIME_PROTOCOL_VERSION) throw new Error("Runtime release protocol version is unsupported");
 	const minimumCliVersion = parseVersion(manifest.minCliVersion, "minimum CLI version");
