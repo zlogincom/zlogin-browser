@@ -5,9 +5,10 @@ import * as process from "node:process";
 import { getAuthStatus, login, logout } from "./auth.js";
 import { getProfileStatus, listProfiles, OpenApiRequestError, startProfile, stopProfile } from "./openapi.js";
 import { ensureKernel, getKernelDownloadStatus, listKernels } from "./kernel.js";
-import { downloadAndInstallRuntime, fetchReleaseManifest, readCurrentRuntime } from "./runtime.js";
+import { fetchReleaseManifest, readCurrentRuntime } from "./runtime.js";
 import { getRuntimeStatus, startRuntime, stopRuntime } from "./supervisor.js";
 import { getProfileStatusWithRuntime, startProfileWithRuntime, stopProfileWithRuntime } from "./runtimeProfile.js";
+import { updateRuntime } from "./updater.js";
 
 const CLI_VERSION = "0.1.0";
 const args = process.argv.slice(2);
@@ -34,6 +35,14 @@ const output = (value: unknown, code = 0): number => {
 };
 const errorOutput = (code: string, message: string, exitCode = 2): number => output({ error: code, message }, exitCode);
 
+const publicEndpoint = (endpoint: Awaited<ReturnType<typeof startRuntime>>) => ({
+	pid: endpoint.pid,
+	version: endpoint.version,
+	port: endpoint.port,
+	healthUrl: endpoint.healthUrl,
+	startedAt: endpoint.startedAt
+});
+
 const handleOpenApiError = (error: unknown): number => {
 	if (error instanceof OpenApiRequestError) {
 		return output({ error: error.code, message: error.message, status: error.status, requestId: error.requestId }, 4);
@@ -47,15 +56,15 @@ const run = async (): Promise<number> => {
 	if (group === "doctor") {
 		const current = await readCurrentRuntime();
 		const runtime = await getRuntimeStatus();
-		return output({ ok: true, platform: process.platform, arch: process.arch, runtime: runtime.running ? runtime.endpoint : current ?? "not-installed" });
+		return output({ ok: true, platform: process.platform, arch: process.arch, runtime: runtime.running && runtime.endpoint ? publicEndpoint(runtime.endpoint) : current ?? "not-installed" });
 	}
 	if (group === "runtime" && action === "status") {
 		const runtime = await getRuntimeStatus();
-		return output({ status: runtime.running ? "running" : runtime.installed ? "installed" : "not-installed", protocolVersion: 1, platform: process.platform, arch: process.arch, current: runtime.installed, endpoint: runtime.endpoint });
+		return output({ status: runtime.running ? "running" : runtime.installed ? "installed" : "not-installed", protocolVersion: 1, platform: process.platform, arch: process.arch, current: runtime.installed, endpoint: runtime.endpoint ? publicEndpoint(runtime.endpoint) : null });
 	}
 	if (group === "runtime" && action === "start") {
 		try {
-			return output({ status: "running", endpoint: await startRuntime() });
+			return output({ status: "running", endpoint: publicEndpoint(await startRuntime()) });
 		} catch (error) {
 			return errorOutput("runtime_start_failed", error instanceof Error ? error.message : "Runtime start failed");
 		}
@@ -71,8 +80,8 @@ const run = async (): Promise<number> => {
 		try {
 			const endpoint = process.env.ZLOGIN_RUNTIME_RELEASES_URL;
 			if (!endpoint) throw new Error("Runtime release manifest endpoint is not configured");
-			const installed = await downloadAndInstallRuntime(await fetchReleaseManifest(endpoint, process.env.ZLOGIN_RUNTIME_CHANNEL ?? "stable"));
-			return output({ status: "installed", ...installed });
+			const result = await updateRuntime(await fetchReleaseManifest(endpoint, process.env.ZLOGIN_RUNTIME_CHANNEL ?? "stable"));
+			return output({ status: "running", ...result.installed, endpoint: publicEndpoint(result.endpoint) });
 		} catch (error) {
 			return errorOutput("runtime_update_failed", error instanceof Error ? error.message : "Runtime update failed");
 		}

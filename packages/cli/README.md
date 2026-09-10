@@ -21,7 +21,9 @@ zlogin kernel ensure --browser-version <version> [--json]
 zlogin kernel download status --task-id <taskId> [--json]
 ```
 
-`runtime update` reads `ZLOGIN_RUNTIME_RELEASES_URL` and optional `ZLOGIN_RUNTIME_CHANNEL`, verifies the HTTPS release manifest, downloads the artifact, checks its size, SHA-256 and Ed25519 signature, extracts it through a path-checked `tar` archive, and atomically updates the current pointer. The trusted public key is supplied through `ZLOGIN_RUNTIME_PUBLIC_KEY`; `ZLOGIN_RUNTIME_PUBLIC_KEY_ID` can pin the manifest key id.
+`runtime update` reads `ZLOGIN_RUNTIME_RELEASES_URL` and optional `ZLOGIN_RUNTIME_CHANNEL`, verifies the HTTPS release manifest, follows only trusted HTTPS (or loopback development) download redirects, streams the artifact with a manifest-size limit, checks SHA-256 and Ed25519 signature, and extracts it through a path-checked `tar` archive. The trusted public key is supplied through `ZLOGIN_RUNTIME_PUBLIC_KEY`; `ZLOGIN_RUNTIME_PUBLIC_KEY_ID` can pin the manifest key id.
+
+The updater stops a running old Runtime and keeps its installed version until the candidate returns the expected health protocol and version. Candidate startup failure atomically restores the previous `current.json` pointer and restarts the prior Runtime.
 
 Runtime release manifests may include `entryPoint` and `artifactType` emitted by
 the Client release builder. `entryPoint` is required to remain a relative path
@@ -32,6 +34,8 @@ packaged executable names.
 Exit codes: `0` success, `1` invalid/unknown command, `2` unavailable, unconfigured, or failed Runtime installation.
 
 `runtime start` reads the installed manifest `entryPoint` (or a platform default), launches native entries directly and JavaScript entries with the CLI's Node executable, then waits for the loopback endpoint-file health contract. `runtime stop` sends an authenticated local shutdown request and removes stale endpoint state after the process exits.
+
+Runtime command output never includes the local control token; it reports only the process, version, loopback endpoint, and lifecycle metadata.
 
 `login`, `logout`, and `auth status` call the authenticated local Runtime control protocol. The CLI displays only the verification URL, user code, and final identity summary; cloud refresh tokens remain owned by the Runtime and are never returned in CLI output.
 Runtime-backed commands reuse a healthy process and automatically start an installed Runtime when it is not running. If a control request loses its connection because that Runtime PID exits, the CLI starts one replacement and retries the request once; HTTP errors and live but unhealthy processes are never restarted automatically.

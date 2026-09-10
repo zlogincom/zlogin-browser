@@ -1,9 +1,10 @@
 import { createHash, verify as verifySignature } from "node:crypto";
 import { createWriteStream } from "node:fs";
-import { mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import * as os from "node:os";
 import * as path from "node:path";
+import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import type { ZLoginRuntimeReleaseManifest } from "zlogin-core";
@@ -34,11 +35,37 @@ export interface InstalledRuntime {
 	path: string;
 }
 
+export interface RuntimeInstallTransaction {
+	installed: InstalledRuntime;
+	previous: InstalledRuntime | null;
+	commit(): Promise<void>;
+	rollback(): Promise<void>;
+}
+
 export const runtimeRoot = (): string =>
 	process.env.ZLOGIN_RUNTIME_HOME ?? path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local"), "ZLogin", "Runtime");
 
 const versionPath = (version: string): string => path.join(runtimeRoot(), version);
 const currentPath = (): string => path.join(runtimeRoot(), "current.json");
+
+const isTrustedHttpUrl = (value: string): boolean => {
+	const url = new URL(value);
+	return url.protocol === "https:" || (url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname));
+};
+
+const fetchTrusted = async (initialUrl: string): Promise<Response> => {
+	let requestUrl = initialUrl;
+	for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
+		const response = await fetch(requestUrl, { redirect: "manual" });
+		if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+		const location = response.headers.get("location");
+		if (!location) throw new Error("Runtime request redirect is missing its location");
+		if (redirectCount === 5) throw new Error("Runtime request has too many redirects");
+		requestUrl = new URL(location, requestUrl).toString();
+		if (!isTrustedHttpUrl(requestUrl)) throw new Error("Runtime request redirect is not trusted");
+	}
+	throw new Error("Runtime request failed");
+};
 
 export const readCurrentRuntime = async (): Promise<InstalledRuntime | null> => {
 	try {
@@ -73,8 +100,7 @@ export const validateReleaseManifest = (manifest: ZLoginRuntimeReleaseManifest):
 	if (compareVersions(minimumCliVersion, parseVersion(CURRENT_CLI_VERSION, "CLI version")) > 0) {
 		throw new Error("Runtime release requires a newer CLI version");
 	}
-	const download = new URL(manifest.downloadUrl);
-	if (download.protocol !== "https:" && !(download.protocol === "http:" && ["localhost", "127.0.0.1"].includes(download.hostname))) {
+	if (!isTrustedHttpUrl(manifest.downloadUrl)) {
 		throw new Error("Runtime download URL is not trusted");
 	}
 	if (!/^[a-fA-F0-9]{64}$/.test(manifest.sha256)) throw new Error("Runtime manifest has an invalid SHA-256");
@@ -84,8 +110,10 @@ export const validateReleaseManifest = (manifest: ZLoginRuntimeReleaseManifest):
 
 const extractArchive = async (archivePath: string, destination: string): Promise<void> => {
 	let listing: string;
+	let verboseListing: string;
 	try {
 		({ stdout: listing } = await execFileAsync("tar", ["-tf", archivePath], { windowsHide: true, maxBuffer: 10 * 1024 * 1024 }));
+		({ stdout: verboseListing } = await execFileAsync("tar", ["-tvf", archivePath], { windowsHide: true, maxBuffer: 10 * 1024 * 1024 }));
 	} catch {
 		throw new Error("Runtime archive cannot be inspected; tar is required");
 	}
@@ -95,10 +123,31 @@ const extractArchive = async (archivePath: string, destination: string): Promise
 			throw new Error("Runtime archive contains an unsafe path");
 		}
 	}
+	if (verboseListing.split(/\r?\n/).some(entry => /^[lh][rwx-]{9}\s/.test(entry))) {
+		throw new Error("Runtime archive contains a link");
+	}
 	try {
 		await execFileAsync("tar", ["-xf", archivePath, "-C", destination], { windowsHide: true, maxBuffer: 10 * 1024 * 1024 });
 	} catch {
 		throw new Error("Runtime archive extraction failed");
+	}
+};
+
+const validateExtractedFiles = async (directory: string, manifest: ZLoginRuntimeReleaseManifest): Promise<void> => {
+	const pending = [directory];
+	while (pending.length > 0) {
+		const current = pending.pop()!;
+		for (const entry of await readdir(current, { withFileTypes: true })) {
+			const entryPath = path.join(current, entry.name);
+			const info = await lstat(entryPath);
+			if (info.isSymbolicLink()) throw new Error("Runtime archive contains a symbolic link");
+			if (info.isDirectory()) pending.push(entryPath);
+		}
+	}
+	if (manifest.entryPoint) {
+		const entryPoint = path.resolve(directory, manifest.entryPoint);
+		const info = await stat(entryPoint).catch(() => null);
+		if (!info?.isFile()) throw new Error("Runtime archive entry point is missing");
 	}
 };
 
@@ -117,60 +166,132 @@ const verifyArtifact = async (archivePath: string, manifest: ZLoginRuntimeReleas
 
 export const fetchReleaseManifest = async (endpoint: string, channel = "stable"): Promise<ZLoginRuntimeReleaseManifest> => {
 	const url = new URL(endpoint);
-	if (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname))) {
+	if (!isTrustedHttpUrl(url.toString())) {
 		throw new Error("Runtime release endpoint is not trusted");
 	}
 	url.searchParams.set("channel", channel);
 	url.searchParams.set("platform", process.platform);
 	url.searchParams.set("arch", process.arch);
 	url.searchParams.set("protocol_version", String(CURRENT_RUNTIME_PROTOCOL_VERSION));
-	const response = await fetch(url);
+	const response = await fetchTrusted(url.toString());
 	if (!response.ok) throw new Error(`Runtime release manifest request failed (${response.status})`);
 	const manifest = (await response.json()) as ZLoginRuntimeReleaseManifest;
 	validateReleaseManifest(manifest);
 	return manifest;
 };
 
-export const downloadAndInstallRuntime = async (manifest: ZLoginRuntimeReleaseManifest): Promise<InstalledRuntime> => {
+const downloadArtifact = async (
+	manifest: ZLoginRuntimeReleaseManifest,
+	archivePath: string
+): Promise<void> => {
+	const response = await fetchTrusted(manifest.downloadUrl);
+	if (!response.ok || !response.body) throw new Error(`Runtime download failed (${response.status})`);
+	const declaredLength = response.headers.get("content-length");
+	if (declaredLength !== null && Number(declaredLength) !== manifest.fileSize) {
+		throw new Error("Runtime download size does not match manifest");
+	}
+	let received = 0;
+	const enforceSize = new Transform({
+		transform(chunk: Buffer, _encoding, callback) {
+			received += chunk.byteLength;
+			callback(received > manifest.fileSize ? new Error("Runtime download exceeds manifest size") : null, chunk);
+		}
+	});
+	await pipeline(response.body, enforceSize, createWriteStream(archivePath));
+	if (received !== manifest.fileSize) throw new Error("Runtime download size does not match manifest");
+};
+
+const writeCurrentVersion = async (version: string): Promise<void> => {
+	const pointer = `${currentPath()}.tmp-${process.pid}`;
+	await writeFile(pointer, JSON.stringify({ version }), "utf8");
+	await rename(pointer, currentPath());
+};
+
+export const prepareRuntimeInstall = async (manifest: ZLoginRuntimeReleaseManifest): Promise<RuntimeInstallTransaction> => {
 	validateReleaseManifest(manifest);
 	const root = runtimeRoot();
 	const tempRoot = await mkdtemp(path.join(os.tmpdir(), "zlogin-runtime-"));
 	const archivePath = path.join(tempRoot, "runtime.download");
 	const lockPath = path.join(root, "install.lock");
 	let lockAcquired = false;
+	let targetBackedUp = false;
+	let candidateActivated = false;
+	let pointerUpdated = false;
+	let finalized = false;
+	let previous: InstalledRuntime | null = null;
+	const target = versionPath(manifest.runtimeVersion);
+	const staging = `${target}.install-${process.pid}`;
+	const backup = `${target}.previous-${process.pid}`;
+	const releaseLock = async (): Promise<void> => {
+		if (lockAcquired) {
+			lockAcquired = false;
+			await rm(lockPath, { force: true });
+		}
+	};
+	const restore = async (): Promise<void> => {
+		if (candidateActivated) await rm(target, { recursive: true, force: true });
+		if (targetBackedUp) await rename(backup, target);
+		if (pointerUpdated) {
+			if (previous) await writeCurrentVersion(previous.version);
+			else await rm(currentPath(), { force: true });
+		}
+	};
 	try {
 		await mkdir(root, { recursive: true });
 		await writeFile(lockPath, `${process.pid}\n`, { flag: "wx" });
 		lockAcquired = true;
-		const response = await fetch(manifest.downloadUrl);
-		if (!response.ok || !response.body) throw new Error(`Runtime download failed (${response.status})`);
-		await pipeline(response.body, createWriteStream(archivePath));
+		await downloadArtifact(manifest, archivePath);
 		await verifyArtifact(archivePath, manifest);
-		const target = versionPath(manifest.runtimeVersion);
-		const staging = `${target}.install-${process.pid}`;
-		const backup = `${target}.previous-${process.pid}`;
 		await rm(staging, { recursive: true, force: true });
 		await rm(backup, { recursive: true, force: true });
 		await mkdir(staging, { recursive: true });
 		await extractArchive(archivePath, staging);
+		await validateExtractedFiles(staging, manifest);
 		await writeFile(path.join(staging, "manifest.json"), JSON.stringify(manifest, null, 2));
-		const previous = await readCurrentRuntime();
-		if (await stat(target).then(() => true).catch(() => false)) await rename(target, backup);
-		try {
-			await rename(staging, target);
-			const pointer = `${currentPath()}.tmp-${process.pid}`;
-			await writeFile(pointer, JSON.stringify({ version: manifest.runtimeVersion }), "utf8");
-			await rename(pointer, currentPath());
-			await rm(backup, { recursive: true, force: true });
-		} catch (error) {
-			await rm(target, { recursive: true, force: true });
-			if (await stat(backup).then(() => true).catch(() => false)) await rename(backup, target);
-			if (previous) await writeFile(currentPath(), JSON.stringify({ version: previous.version }), "utf8");
-			throw error;
+		previous = await readCurrentRuntime();
+		if (await stat(target).then(() => true).catch(() => false)) {
+			await rename(target, backup);
+			targetBackedUp = true;
 		}
-		return { version: manifest.runtimeVersion, path: target };
-	} finally {
+		await rename(staging, target);
+		candidateActivated = true;
+		await writeCurrentVersion(manifest.runtimeVersion);
+		pointerUpdated = true;
 		await rm(tempRoot, { recursive: true, force: true });
-		if (lockAcquired) await rm(lockPath, { force: true });
+		const installed = { version: manifest.runtimeVersion, path: target };
+		return {
+			installed,
+			previous,
+			commit: async () => {
+				if (finalized) return;
+				finalized = true;
+				await rm(backup, { recursive: true, force: true }).catch(() => undefined);
+				await releaseLock();
+			},
+			rollback: async () => {
+				if (finalized) return;
+				finalized = true;
+				try {
+					await restore();
+				} finally {
+					await releaseLock();
+				}
+			}
+		};
+	} catch (error) {
+		try {
+			await restore();
+		} finally {
+			await rm(staging, { recursive: true, force: true });
+			await rm(tempRoot, { recursive: true, force: true });
+			await releaseLock();
+		}
+		throw error;
 	}
+};
+
+export const downloadAndInstallRuntime = async (manifest: ZLoginRuntimeReleaseManifest): Promise<InstalledRuntime> => {
+	const transaction = await prepareRuntimeInstall(manifest);
+	await transaction.commit();
+	return transaction.installed;
 };

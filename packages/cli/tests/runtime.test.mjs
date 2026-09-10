@@ -38,6 +38,63 @@ test("validateReleaseManifest validates the packaged entry point and artifact ty
 	assert.throws(() => validateReleaseManifest({ ...base, entryPoint: "dist/index.js", artifactType: "exe" }), /unsupported artifact type/);
 });
 
+test("rejects archives containing symbolic links before extraction", async () => {
+	const root = await mkdtemp(join(tmpdir(), "zlogin-cli-link-archive-"));
+	try {
+		const archive = join(root, "runtime.tar");
+		await execFileAsync(process.execPath, ["-e", `
+			const fs = require('node:fs');
+			const tar = require('node:child_process');
+			fs.writeFileSync(${JSON.stringify(join(root, "target.txt"))}, 'target');
+			fs.symlinkSync(${JSON.stringify(join(root, "target.txt"))}, ${JSON.stringify(join(root, "link"))});
+			tar.execFileSync('tar', ['-cf', ${JSON.stringify(archive)}, '-C', ${JSON.stringify(root)}, 'target.txt', 'link']);
+		`]);
+		const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+		const data = await readFile(archive);
+		const manifest = {
+			releaseId: "00000000-0000-4000-8000-000000000003",
+			runtimeVersion: "0.1.0-link",
+			protocolVersion: 1,
+			platform: process.platform,
+			arch: process.arch,
+			channel: "stable",
+			minApiVersion: "2026-09",
+			minCliVersion: "0.1.0",
+			entryPoint: "target.txt",
+			artifactType: "tar",
+			downloadUrl: "",
+			fileSize: data.byteLength,
+			sha256: createHash("sha256").update(data).digest("hex"),
+			signature: sign(null, data, privateKey).toString("base64"),
+			signatureKeyId: "test-key",
+			publishedAt: new Date().toISOString(),
+			status: "active"
+		};
+		const server = createServer((_request, response) => {
+			response.writeHead(200, { "content-length": String(data.byteLength) }).end(data);
+		});
+		await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+		const address = server.address();
+		manifest.downloadUrl = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}/artifact`;
+		const home = await mkdtemp(join(tmpdir(), "zlogin-cli-link-home-"));
+		const previousHome = process.env.ZLOGIN_RUNTIME_HOME;
+		const previousKey = process.env.ZLOGIN_RUNTIME_PUBLIC_KEY;
+		process.env.ZLOGIN_RUNTIME_HOME = home;
+		process.env.ZLOGIN_RUNTIME_PUBLIC_KEY = publicKey.export({ type: "spki", format: "pem" }).toString();
+		try {
+			await assert.rejects(downloadAndInstallRuntime(manifest), /archive contains a link/);
+			assert.equal(await readCurrentRuntime(), null);
+		} finally {
+			server.close();
+			await rm(home, { recursive: true, force: true });
+			if (previousHome === undefined) delete process.env.ZLOGIN_RUNTIME_HOME; else process.env.ZLOGIN_RUNTIME_HOME = previousHome;
+			if (previousKey === undefined) delete process.env.ZLOGIN_RUNTIME_PUBLIC_KEY; else process.env.ZLOGIN_RUNTIME_PUBLIC_KEY = previousKey;
+		}
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
 test("fetches the release manifest with the negotiated protocol query", async t => {
 	let requestUrl;
 	const server = createServer((request, response) => {
@@ -71,6 +128,20 @@ test("fetches the release manifest with the negotiated protocol query", async t 
 	assert.equal(requestUrl.searchParams.get("platform"), process.platform);
 	assert.equal(requestUrl.searchParams.get("arch"), process.arch);
 	assert.equal(requestUrl.searchParams.get("protocol_version"), "1");
+});
+
+test("rejects a release manifest endpoint redirect to untrusted HTTP", async t => {
+	const server = createServer((_request, response) => {
+		response.writeHead(302, { location: "http://example.com/api/runtime/releases/latest" }).end();
+	});
+	await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+	const address = server.address();
+	const port = typeof address === "object" && address ? address.port : 0;
+	t.after(() => server.close());
+	await assert.rejects(
+		fetchReleaseManifest(`http://127.0.0.1:${port}/api/runtime/releases/latest`),
+		/redirect is not trusted/
+	);
 });
 
 test("downloads, verifies and atomically installs a signed Runtime archive", async t => {
