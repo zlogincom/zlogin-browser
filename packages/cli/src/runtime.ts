@@ -62,7 +62,7 @@ export const validateReleaseManifest = (manifest: ZLoginRuntimeReleaseManifest):
 			throw new Error("Runtime manifest has an invalid entry point");
 		}
 		const normalizedEntryPoint = manifest.entryPoint.replaceAll("\\", "/");
-		if (normalizedEntryPoint.split("/").some(segment => segment === ".." || segment === "") || normalizedEntryPoint === ".") {
+		if (normalizedEntryPoint.split("/").some(segment => segment === "." || segment === ".." || segment === "")) {
 			throw new Error("Runtime manifest has an unsafe entry point");
 		}
 	}
