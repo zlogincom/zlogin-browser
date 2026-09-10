@@ -30,6 +30,13 @@ test("validateReleaseManifest rejects incompatible protocol and minimum CLI vers
 	assert.throws(() => validateReleaseManifest({ ...base, minCliVersion: "invalid" }), /invalid minimum CLI version/);
 });
 
+test("validateReleaseManifest validates the packaged entry point and artifact type", () => {
+	const base = { releaseId: "00000000-0000-4000-8000-000000000001", status: "active", platform: process.platform, arch: process.arch, downloadUrl: "https://cdn.example.com/runtime.tar", sha256: "a".repeat(64), fileSize: 1, signature: "sig", signatureKeyId: "key", runtimeVersion: "0.1.0", protocolVersion: 1, channel: "stable", minApiVersion: "2026-09", minCliVersion: "0.1.0", publishedAt: new Date().toISOString() };
+	assert.doesNotThrow(() => validateReleaseManifest({ ...base, entryPoint: "dist/index.js", artifactType: "tar.gz" }));
+	assert.throws(() => validateReleaseManifest({ ...base, entryPoint: "../outside.js" }), /unsafe entry point/);
+	assert.throws(() => validateReleaseManifest({ ...base, entryPoint: "dist/index.js", artifactType: "exe" }), /unsupported artifact type/);
+});
+
 test("fetches the release manifest with the negotiated protocol query", async t => {
 	let requestUrl;
 	const server = createServer((request, response) => {

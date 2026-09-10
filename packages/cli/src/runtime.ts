@@ -11,6 +11,7 @@ import type { ZLoginRuntimeReleaseManifest } from "zlogin-core";
 const CURRENT_CLI_VERSION = "0.1.0";
 const CURRENT_RUNTIME_PROTOCOL_VERSION = 1;
 const SEMVER_PATTERN = /^(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.-]+)?$/;
+const RUNTIME_ARTIFACT_TYPES = new Set(["zip", "tar", "tar.gz"]);
 
 const parseVersion = (value: unknown, field: string): [number, number, number] => {
 	if (typeof value !== "string") throw new Error(`Runtime manifest has an invalid ${field}`);
@@ -56,6 +57,18 @@ export const validateReleaseManifest = (manifest: ZLoginRuntimeReleaseManifest):
 	if (typeof manifest.releaseId !== "string" || !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(manifest.releaseId)) throw new Error("Runtime manifest has an invalid release id");
 	if (manifest.platform !== process.platform || manifest.arch !== process.arch) throw new Error("Runtime release does not match this platform");
 	if (manifest.protocolVersion !== CURRENT_RUNTIME_PROTOCOL_VERSION) throw new Error("Runtime release protocol version is unsupported");
+	if (manifest.entryPoint !== undefined) {
+		if (typeof manifest.entryPoint !== "string" || !manifest.entryPoint.trim() || path.posix.isAbsolute(manifest.entryPoint) || path.win32.isAbsolute(manifest.entryPoint)) {
+			throw new Error("Runtime manifest has an invalid entry point");
+		}
+		const normalizedEntryPoint = manifest.entryPoint.replaceAll("\\", "/");
+		if (normalizedEntryPoint.split("/").some(segment => segment === ".." || segment === "") || normalizedEntryPoint === ".") {
+			throw new Error("Runtime manifest has an unsafe entry point");
+		}
+	}
+	if (manifest.artifactType !== undefined && !RUNTIME_ARTIFACT_TYPES.has(manifest.artifactType)) {
+		throw new Error("Runtime manifest has an unsupported artifact type");
+	}
 	const minimumCliVersion = parseVersion(manifest.minCliVersion, "minimum CLI version");
 	if (compareVersions(minimumCliVersion, parseVersion(CURRENT_CLI_VERSION, "CLI version")) > 0) {
 		throw new Error("Runtime release requires a newer CLI version");

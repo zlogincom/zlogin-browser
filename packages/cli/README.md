@@ -23,6 +23,12 @@ zlogin kernel download status --task-id <taskId> [--json]
 
 `runtime update` reads `ZLOGIN_RUNTIME_RELEASES_URL` and optional `ZLOGIN_RUNTIME_CHANNEL`, verifies the HTTPS release manifest, downloads the artifact, checks its size, SHA-256 and Ed25519 signature, extracts it through a path-checked `tar` archive, and atomically updates the current pointer. The trusted public key is supplied through `ZLOGIN_RUNTIME_PUBLIC_KEY`; `ZLOGIN_RUNTIME_PUBLIC_KEY_ID` can pin the manifest key id.
 
+Runtime release manifests may include `entryPoint` and `artifactType` emitted by
+the Client release builder. `entryPoint` is required to remain a relative path
+inside the installed version; `artifactType` is metadata for `zip`, `tar`, or
+`tar.gz` artifacts. Older manifests remain compatible and use the conventional
+packaged executable names.
+
 Exit codes: `0` success, `1` invalid/unknown command, `2` unavailable, unconfigured, or failed Runtime installation.
 
 `runtime start` reads the installed manifest `entryPoint` (or a platform default), launches native entries directly and JavaScript entries with the CLI's Node executable, then waits for the loopback endpoint-file health contract. `runtime stop` sends an authenticated local shutdown request and removes stale endpoint state after the process exits.

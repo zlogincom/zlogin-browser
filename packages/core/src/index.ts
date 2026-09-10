@@ -27,6 +27,22 @@ export interface ZLoginResult<TData> {
 
 export type ZLoginRuntimePlatform = "win32" | "darwin" | "linux";
 export type ZLoginRuntimeChannel = "stable" | "beta" | "canary";
+export type ZLoginRuntimeArtifactType = "zip" | "tar" | "tar.gz";
+
+/** Metadata emitted by the Runtime build and consumed by the release pipeline. */
+export interface ZLoginRuntimeArtifactManifest {
+	releaseId: string;
+	runtimeVersion: string;
+	protocolVersion: number;
+	platform: ZLoginRuntimePlatform;
+	arch: string;
+	entryPoint: string;
+	artifactType: ZLoginRuntimeArtifactType;
+	fileSize: number;
+	sha256: string;
+	signature: string;
+	signatureKeyId: string;
+}
 
 /** Runtime 发布清单。downloadUrl 只能来自受信任 API，CLI 不接受命令行覆盖。 */
 export interface ZLoginRuntimeReleaseManifest {
@@ -38,6 +54,10 @@ export interface ZLoginRuntimeReleaseManifest {
 	channel: ZLoginRuntimeChannel;
 	minApiVersion: string;
 	minCliVersion: string;
+	/** Relative path inside the installed archive. Older releases may omit it. */
+	entryPoint?: string;
+	/** Archive format produced by the Runtime build pipeline. */
+	artifactType?: ZLoginRuntimeArtifactType;
 	downloadUrl: string;
 	fileSize: number;
 	sha256: string;
