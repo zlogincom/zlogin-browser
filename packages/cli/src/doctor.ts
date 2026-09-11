@@ -9,7 +9,7 @@ import { mkdir, statfs, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 import * as process from "node:process";
 import { runtimeRoot } from "./runtime.js";
-import { getRuntimeStatus, readRuntimeEndpoint, runtimeHealth, startRuntime, type RuntimeEndpoint } from "./supervisor.js";
+import { getRuntimeStatus, runtimeHealth, startRuntime, type RuntimeEndpoint } from "./supervisor.js";
 
 export type DoctorCheckStatus = "pass" | "warn" | "fail" | "skip";
 
