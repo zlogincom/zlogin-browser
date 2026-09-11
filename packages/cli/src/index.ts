@@ -5,10 +5,11 @@ import * as process from "node:process";
 import { getAuthStatus, login, logout } from "./auth.js";
 import { getProfileStatus, listProfiles, OpenApiRequestError, startProfile, stopProfile } from "./openapi.js";
 import { ensureKernel, getKernelDownloadStatus, listKernels } from "./kernel.js";
-import { fetchReleaseManifest, readCurrentRuntime } from "./runtime.js";
+import { fetchReleaseManifest } from "./runtime.js";
 import { getRuntimeStatus, startRuntime, stopRuntime } from "./supervisor.js";
 import { getProfileStatusWithRuntime, startProfileWithRuntime, stopProfileWithRuntime } from "./runtimeProfile.js";
 import { updateRuntime } from "./updater.js";
+import { runDoctor } from "./doctor.js";
 
 const CLI_VERSION = "0.1.0";
 const args = process.argv.slice(2);
@@ -17,7 +18,7 @@ const optionValue = (name: string): string | undefined => {
 	const index = args.indexOf(name);
 	return index >= 0 ? args[index + 1] : undefined;
 };
-const valueOptions = new Set(["--timeout", "--browser-version", "--task-id"]);
+const valueOptions = new Set(["--timeout", "--browser-version", "--task-id", "--bundle"]);
 const command: string[] = [];
 for (let index = 0; index < args.length; index += 1) {
 	if (valueOptions.has(args[index])) {
@@ -54,9 +55,12 @@ const run = async (): Promise<number> => {
 	const [group = "version", action] = command;
 	if (group === "version") return output({ cliVersion: CLI_VERSION, protocolVersion: 1 });
 	if (group === "doctor") {
-		const current = await readCurrentRuntime();
-		const runtime = await getRuntimeStatus();
-		return output({ ok: true, platform: process.platform, arch: process.arch, runtime: runtime.running && runtime.endpoint ? publicEndpoint(runtime.endpoint) : current ?? "not-installed" });
+		try {
+			const report = await runDoctor({ repair: args.includes("--repair"), bundlePath: optionValue("--bundle") });
+			return output(report, report.ok ? 0 : 6);
+		} catch (error) {
+			return errorOutput("doctor_failed", error instanceof Error ? error.message : "Doctor failed", 6);
+		}
 	}
 	if (group === "runtime" && action === "status") {
 		const runtime = await getRuntimeStatus();

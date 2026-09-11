@@ -5,7 +5,7 @@ stable JSON/human output while Runtime and Open API integrations evolve.
 
 ```text
 zlogin version
-zlogin doctor [--json]
+zlogin doctor [--repair] [--bundle <path>] [--json]
 zlogin runtime status [--json]
 zlogin runtime start [--json]
 zlogin runtime stop [--json]
@@ -32,7 +32,14 @@ inside the installed version; `artifactType` is metadata for `zip`, `tar`, or
 `tar.gz` artifacts. Older manifests remain compatible and use the conventional
 packaged executable names.
 
-Exit codes: `0` success, `1` invalid/unknown command, `2` unavailable, unconfigured, or failed Runtime installation.
+Exit codes: `0` success (warnings are allowed), `1` invalid/unknown command, `2` unavailable or unconfigured command, `3` authentication failure, `4` Open API failure, `5` kernel failure, `6` doctor failure.
+
+`doctor` performs a read-only platform, Runtime installation/health, diagnostics,
+authentication, kernel, Open API configuration, and disk-space check. `--repair`
+starts an installed Runtime that is not running and verifies it again; a healthy
+or live-but-unhealthy process is never replaced. `--bundle <path>` writes a
+sanitized JSON report for a user-initiated support upload. The report excludes
+control tokens, API keys, and Runtime session credentials.
 
 `runtime start` reads the installed manifest `entryPoint` (or a platform default), launches native entries directly and JavaScript entries with the CLI's Node executable, then waits for the loopback endpoint-file health contract. `runtime stop` sends an authenticated local shutdown request and removes stale endpoint state after the process exits.
 
