@@ -68,6 +68,30 @@ const fetchTrusted = async (initialUrl: string): Promise<Response> => {
 	throw new Error("Runtime request failed");
 };
 
+const runtimeReleaseRequestError = async (response: Response): Promise<ZLoginCliError> => {
+	let payload: unknown = null;
+	try {
+		payload = await response.json();
+	} catch {
+		// A proxy or an older API may return an empty/non-JSON error body.
+	}
+	const record = payload && typeof payload === "object" ? payload as Record<string, unknown> : null;
+	const upstreamCode = typeof record?.title === "string" && record.title.trim() ? record.title.trim() : undefined;
+	const detail = typeof record?.detail === "string" && record.detail.trim() ? record.detail.trim() : undefined;
+	const message = detail ?? upstreamCode ?? `Runtime release manifest request failed (${response.status})`;
+	const retryable = [408, 429, 500, 502, 503, 504].includes(response.status);
+	return new ZLoginCliError(
+		"runtime_request_failed",
+		message,
+		retryable ? 6 : 4,
+		retryable,
+		{
+			status: response.status,
+			...(upstreamCode ? { upstreamCode } : {})
+		}
+	);
+};
+
 export const readCurrentRuntime = async (): Promise<InstalledRuntime | null> => {
 	try {
 		const value = JSON.parse(await readFile(currentPath(), "utf8")) as { version?: string };
@@ -178,7 +202,7 @@ export const fetchReleaseManifest = async (endpoint: string, channel = "stable")
 	url.searchParams.set("arch", process.arch);
 	url.searchParams.set("protocol_version", String(CURRENT_RUNTIME_PROTOCOL_VERSION));
 	const response = await fetchTrusted(url.toString());
-	if (!response.ok) throw new Error(`Runtime release manifest request failed (${response.status})`);
+	if (!response.ok) throw await runtimeReleaseRequestError(response);
 	const manifest = (await response.json()) as ZLoginRuntimeReleaseManifest;
 	validateReleaseManifest(manifest);
 	return manifest;

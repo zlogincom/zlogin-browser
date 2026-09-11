@@ -130,6 +130,33 @@ test("fetches the release manifest with the negotiated protocol query", async t 
 	assert.equal(requestUrl.searchParams.get("protocol_version"), "1");
 });
 
+test("preserves API release ProblemDetails for stable CLI diagnostics", async t => {
+	const server = createServer((_request, response) => {
+		response.setHeader("content-type", "application/problem+json");
+		response.writeHead(404).end(JSON.stringify({
+			title: "runtime_release_not_found",
+			status: 404,
+			detail: "No active Runtime release matches this target"
+		}));
+	});
+	await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+	const address = server.address();
+	const port = typeof address === "object" && address ? address.port : 0;
+	t.after(() => server.close());
+	await assert.rejects(
+		fetchReleaseManifest(`http://127.0.0.1:${port}/api/runtime/releases/latest`),
+		error => {
+			assert.equal(error.code, "runtime_request_failed");
+			assert.equal(error.message, "No active Runtime release matches this target");
+			assert.equal(error.exitCode, 4);
+			assert.equal(error.retryable, false);
+			assert.equal(error.details.status, 404);
+			assert.equal(error.details.upstreamCode, "runtime_release_not_found");
+			return true;
+		}
+	);
+});
+
 test("rejects a release manifest endpoint redirect to untrusted HTTP", async t => {
 	const server = createServer((_request, response) => {
 		response.writeHead(302, { location: "http://example.com/api/runtime/releases/latest" }).end();
