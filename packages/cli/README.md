@@ -1,6 +1,7 @@
 # @zlogin/cli
 
-Windows-first ZLogin Runtime CLI on the `cli` branch. Commands expose stable JSON/human output while Runtime and Open API integration is added incrementally.
+Windows-first ZLogin Runtime CLI on the `runtime` branch. Commands expose
+stable JSON/human output while Runtime and Open API integrations evolve.
 
 ```text
 zlogin version

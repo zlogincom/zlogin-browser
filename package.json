@@ -6,9 +6,10 @@
 	"packageManager": "pnpm@10.14.0",
 	"license": "MIT",
 	"scripts": {
-		"build": "pnpm --filter zlogin-core build && pnpm --filter zlogin-mcp build",
-		"check": "node scripts/check-structure.mjs && pnpm --filter zlogin-core check && pnpm --filter zlogin-mcp check",
-		"test": "pnpm --filter zlogin-mcp test",
+		"build": "pnpm --filter zlogin-core build && pnpm --filter @zlogin/cli build && pnpm --filter zlogin-mcp build",
+		"check": "node scripts/check-structure.mjs && pnpm --filter zlogin-core check && pnpm --filter @zlogin/cli check && pnpm --filter zlogin-mcp check",
+		"test": "pnpm --filter @zlogin/cli test && pnpm --filter zlogin-mcp test",
+		"pack:cli": "pnpm --filter @zlogin/cli build && pnpm --filter @zlogin/cli pack --pack-destination temp-pack",
 		"format": "prettier --write .",
 		"format:check": "prettier --check ."
 	},

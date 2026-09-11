@@ -38,6 +38,21 @@ $env:ZLOGIN_API_KEY = "replace-with-your-api-key"
 node packages/mcp/dist/index.js
 ```
 
+Build the Windows-first Runtime CLI from the `runtime` development branch:
+
+```bash
+pnpm --filter @zlogin/cli build
+node packages/cli/dist/index.js version
+node packages/cli/dist/index.js runtime status --json
+```
+
+The CLI starts and supervises a separately signed ZLogin Runtime. Runtime
+bootstrap downloads are controlled by `ZLOGIN_RUNTIME_RELEASES_URL`; the CLI
+accepts only API-provided HTTPS manifests, verifies SHA-256 and Ed25519
+signatures, installs transactionally, and never prints the Runtime control
+token. Profile commands use the loopback Open API through
+`ZLOGIN_OPENAPI_URL` and `ZLOGIN_OPENAPI_KEY`.
+
 Add the server to an MCP client using the absolute path to `packages/mcp/dist/index.js`:
 
 ```json
@@ -67,9 +82,9 @@ Install the skill from a checkout by placing `skills/zlogin-browser` in the agen
 - Structured responses with request IDs, ETags, rate-limit metadata, and stable error details.
 - Read-only, action, and destructive MCP annotations so clients can make better confirmation decisions.
 
-The CLI package is intentionally not implemented yet and is the next-version target.
-
-This repository and its published MCP/core packages are licensed under the [MIT License](LICENSE). The CLI remains a private next-version scaffold.
+The CLI package is implemented on the `runtime` branch and remains a private
+preview until its release checklist is approved. This repository and its
+published MCP/core packages are licensed under the [MIT License](LICENSE).
 
 ## Capability Boundaries
 
@@ -105,9 +120,13 @@ Requirements:
 ```bash
 pnpm install
 pnpm run check
+pnpm run test
+pnpm run build
 ```
 
-For package-specific configuration, development commands, and release notes, see [packages/mcp/README.md](packages/mcp/README.md).
+For package-specific configuration, development commands, and release notes,
+see [packages/cli/README.md](packages/cli/README.md) and
+[packages/mcp/README.md](packages/mcp/README.md).
 
 No API key, desktop client, or live ZLogin environment is required for the scaffold checks.
 

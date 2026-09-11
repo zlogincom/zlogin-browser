@@ -46,4 +46,11 @@ for (const script of ["build", "typecheck", "test"]) {
 	if (typeof mcpPackage.scripts?.[script] !== "string") throw new Error(`MCP package is missing ${script} script`);
 }
 
+const cliPackage = JSON.parse(await readFile(resolve(root, "packages/cli/package.json"), "utf8"));
+for (const script of ["build", "check", "test"]) {
+	if (typeof cliPackage.scripts?.[script] !== "string") throw new Error(`CLI package is missing ${script} script`);
+}
+const cliBin = typeof cliPackage.bin === "string" ? cliPackage.bin : cliPackage.bin?.zlogin;
+if (cliBin !== "dist/index.js") throw new Error("CLI package must expose dist/index.js as its executable");
+
 console.log(`Public repository scaffold is valid (${requiredFiles.length} required files).`);
