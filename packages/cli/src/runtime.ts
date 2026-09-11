@@ -179,15 +179,38 @@ const validateExtractedFiles = async (directory: string, manifest: ZLoginRuntime
 	}
 };
 
+const resolveTrustedPublicKey = (manifest: ZLoginRuntimeReleaseManifest): string => {
+	const keyring = process.env.ZLOGIN_RUNTIME_TRUSTED_KEYS;
+	if (keyring?.trim()) {
+		let entries: unknown;
+		try {
+			entries = JSON.parse(keyring);
+		} catch {
+			throw new Error("Runtime signature keyring is invalid");
+		}
+		if (!entries || typeof entries !== "object" || Array.isArray(entries)) {
+			throw new Error("Runtime signature keyring is invalid");
+		}
+		const value = (entries as Record<string, unknown>)[manifest.signatureKeyId];
+		if (typeof value !== "string" || !value.trim()) {
+			throw new Error("Runtime signature key is not trusted");
+		}
+		return value;
+	}
+
+	const publicKey = process.env.ZLOGIN_RUNTIME_PUBLIC_KEY;
+	if (!publicKey) throw new Error("Runtime signature public key is not configured");
+	const expectedKeyId = process.env.ZLOGIN_RUNTIME_PUBLIC_KEY_ID;
+	if (expectedKeyId && expectedKeyId !== manifest.signatureKeyId) throw new Error("Runtime signature key is not trusted");
+	return publicKey;
+};
+
 const verifyArtifact = async (archivePath: string, manifest: ZLoginRuntimeReleaseManifest): Promise<void> => {
 	const data = await readFile(archivePath);
 	if (data.byteLength !== manifest.fileSize) throw new Error("Runtime download size does not match manifest");
 	const hash = createHash("sha256").update(data).digest("hex");
 	if (hash.toLowerCase() !== manifest.sha256.toLowerCase()) throw new Error("Runtime SHA-256 verification failed");
-	const publicKey = process.env.ZLOGIN_RUNTIME_PUBLIC_KEY;
-	if (!publicKey) throw new Error("Runtime signature public key is not configured");
-	const expectedKeyId = process.env.ZLOGIN_RUNTIME_PUBLIC_KEY_ID;
-	if (expectedKeyId && expectedKeyId !== manifest.signatureKeyId) throw new Error("Runtime signature key is not trusted");
+	const publicKey = resolveTrustedPublicKey(manifest);
 	const signature = Buffer.from(manifest.signature, "base64");
 	if (!verifySignature(null, data, publicKey, signature)) throw new Error("Runtime signature verification failed");
 };

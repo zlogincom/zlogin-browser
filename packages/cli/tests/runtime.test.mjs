@@ -208,9 +208,13 @@ test("downloads, verifies and atomically installs a signed Runtime archive", asy
 	const previousHome = process.env.ZLOGIN_RUNTIME_HOME;
 	const previousKey = process.env.ZLOGIN_RUNTIME_PUBLIC_KEY;
 	const previousKeyId = process.env.ZLOGIN_RUNTIME_PUBLIC_KEY_ID;
+	const previousKeyring = process.env.ZLOGIN_RUNTIME_TRUSTED_KEYS;
 	process.env.ZLOGIN_RUNTIME_HOME = home;
-	process.env.ZLOGIN_RUNTIME_PUBLIC_KEY = publicKey.export({ type: "spki", format: "pem" }).toString();
-	process.env.ZLOGIN_RUNTIME_PUBLIC_KEY_ID = "test-key";
+	process.env.ZLOGIN_RUNTIME_TRUSTED_KEYS = JSON.stringify({
+		"test-key": publicKey.export({ type: "spki", format: "pem" }).toString()
+	});
+	delete process.env.ZLOGIN_RUNTIME_PUBLIC_KEY;
+	delete process.env.ZLOGIN_RUNTIME_PUBLIC_KEY_ID;
 	t.after(async () => {
 		server.close();
 		await rm(fixture.source, { recursive: true, force: true });
@@ -222,6 +226,8 @@ test("downloads, verifies and atomically installs a signed Runtime archive", asy
 		else process.env.ZLOGIN_RUNTIME_PUBLIC_KEY = previousKey;
 		if (previousKeyId === undefined) delete process.env.ZLOGIN_RUNTIME_PUBLIC_KEY_ID;
 		else process.env.ZLOGIN_RUNTIME_PUBLIC_KEY_ID = previousKeyId;
+		if (previousKeyring === undefined) delete process.env.ZLOGIN_RUNTIME_TRUSTED_KEYS;
+		else process.env.ZLOGIN_RUNTIME_TRUSTED_KEYS = previousKeyring;
 	});
 	const installed = await downloadAndInstallRuntime(manifest);
 	assert.equal(installed.version, manifest.runtimeVersion);
@@ -230,6 +236,10 @@ test("downloads, verifies and atomically installs a signed Runtime archive", asy
 	assert.deepEqual(JSON.parse(await readFile(join(installed.path, "manifest.json"), "utf8")), manifest);
 	const badSignature = { ...manifest, signature: sign(null, Buffer.from("different"), privateKey).toString("base64") };
 	await assert.rejects(downloadAndInstallRuntime(badSignature), /signature verification failed/);
+	await assert.rejects(
+		downloadAndInstallRuntime({ ...manifest, signatureKeyId: "retired-key" }),
+		/signature key is not trusted/
+	);
 	assert.equal((await readCurrentRuntime()).version, manifest.runtimeVersion);
 	await writeFile(join(home, "install.lock"), "foreign-process\n");
 	await assert.rejects(downloadAndInstallRuntime(manifest));

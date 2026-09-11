@@ -22,7 +22,7 @@ zlogin kernel ensure --browser-version <version> [--json]
 zlogin kernel download status --task-id <taskId> [--json]
 ```
 
-`runtime update` reads `ZLOGIN_RUNTIME_RELEASES_URL` and optional `ZLOGIN_RUNTIME_CHANNEL`, verifies the HTTPS release manifest, follows only trusted HTTPS (or loopback development) download redirects, streams the artifact with a manifest-size limit, checks SHA-256 and Ed25519 signature, and extracts it through a path-checked `tar` archive. The trusted public key is supplied through `ZLOGIN_RUNTIME_PUBLIC_KEY`; `ZLOGIN_RUNTIME_PUBLIC_KEY_ID` can pin the manifest key id.
+`runtime update` reads `ZLOGIN_RUNTIME_RELEASES_URL` and optional `ZLOGIN_RUNTIME_CHANNEL`, verifies the HTTPS release manifest, follows only trusted HTTPS (or loopback development) download redirects, streams the artifact with a manifest-size limit, checks SHA-256 and Ed25519 signature, and extracts it through a path-checked `tar` archive. The trusted key set can be supplied as a JSON object through `ZLOGIN_RUNTIME_TRUSTED_KEYS`, keyed by manifest `signatureKeyId`; this supports key rotation without replacing the CLI. `ZLOGIN_RUNTIME_PUBLIC_KEY` and optional `ZLOGIN_RUNTIME_PUBLIC_KEY_ID` remain the single-key compatibility path when no keyring is configured. Unknown key ids and malformed keyrings are rejected before installation.
 
 The updater stops a running old Runtime and keeps its installed version until the candidate returns the expected health protocol and version. Candidate startup failure atomically restores the previous `current.json` pointer and restarts the prior Runtime.
 
