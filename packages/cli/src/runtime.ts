@@ -8,6 +8,7 @@ import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import type { ZLoginRuntimeReleaseManifest } from "zlogin-core";
+import { ZLoginCliError } from "./errors.js";
 
 const CURRENT_CLI_VERSION = "0.1.0";
 const CURRENT_RUNTIME_PROTOCOL_VERSION = 1;
@@ -80,10 +81,13 @@ export const readCurrentRuntime = async (): Promise<InstalledRuntime | null> => 
 };
 
 export const validateReleaseManifest = (manifest: ZLoginRuntimeReleaseManifest): void => {
-	if (!manifest || manifest.status !== "active") throw new Error("Runtime release is not active");
+	if (!manifest || manifest.status !== "active") {
+		const code = manifest?.status === "revoked" ? "runtime_release_revoked" : "runtime_release_inactive";
+		throw new ZLoginCliError(code, "Runtime release is not active", 7, false);
+	}
 	if (typeof manifest.releaseId !== "string" || !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(manifest.releaseId)) throw new Error("Runtime manifest has an invalid release id");
-	if (manifest.platform !== process.platform || manifest.arch !== process.arch) throw new Error("Runtime release does not match this platform");
-	if (manifest.protocolVersion !== CURRENT_RUNTIME_PROTOCOL_VERSION) throw new Error("Runtime release protocol version is unsupported");
+	if (manifest.platform !== process.platform || manifest.arch !== process.arch) throw new ZLoginCliError("runtime_platform_mismatch", "Runtime release does not match this platform", 5, false);
+	if (manifest.protocolVersion !== CURRENT_RUNTIME_PROTOCOL_VERSION) throw new ZLoginCliError("runtime_protocol_unsupported", "Runtime release protocol version is unsupported", 5, false);
 	if (manifest.entryPoint !== undefined) {
 		if (typeof manifest.entryPoint !== "string" || !manifest.entryPoint.trim() || path.posix.isAbsolute(manifest.entryPoint) || path.win32.isAbsolute(manifest.entryPoint)) {
 			throw new Error("Runtime manifest has an invalid entry point");
@@ -98,7 +102,7 @@ export const validateReleaseManifest = (manifest: ZLoginRuntimeReleaseManifest):
 	}
 	const minimumCliVersion = parseVersion(manifest.minCliVersion, "minimum CLI version");
 	if (compareVersions(minimumCliVersion, parseVersion(CURRENT_CLI_VERSION, "CLI version")) > 0) {
-		throw new Error("Runtime release requires a newer CLI version");
+		throw new ZLoginCliError("runtime_cli_outdated", "Runtime release requires a newer CLI version", 5, false);
 	}
 	if (!isTrustedHttpUrl(manifest.downloadUrl)) {
 		throw new Error("Runtime download URL is not trusted");

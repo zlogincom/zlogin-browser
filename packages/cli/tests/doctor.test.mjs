@@ -24,7 +24,12 @@ test("doctor reports missing Runtime and writes a sanitized support bundle", asy
 	assert.equal(report.ok, false);
 	assert.equal(report.repaired, false);
 	assert.equal(report.runtime.installed, false);
-	assert.ok(report.checks.some(item => item.name === "runtime-installation" && item.status === "fail"));
+	const installation = report.checks.find(item => item.name === "runtime-installation");
+	assert.equal(installation.status, "fail");
+	assert.equal(installation.details.errorCode, "runtime_not_installed");
+	assert.equal(installation.details.action, "zlogin runtime update");
+	const health = report.checks.find(item => item.name === "runtime-health");
+	assert.equal(health.details.errorCode, "runtime_unavailable");
 	const bundleBody = await readFile(bundle, "utf8");
 	assert.deepEqual(JSON.parse(bundleBody), report);
 	assert.doesNotMatch(bundleBody, /secret-control|runtime-session|access_token|refresh_token/i);

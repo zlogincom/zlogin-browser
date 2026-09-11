@@ -5,6 +5,7 @@ import * as path from "node:path";
 import * as process from "node:process";
 import { ZLOGIN_RUNTIME_PROTOCOL_VERSION } from "zlogin-core";
 import { runtimeRoot, readCurrentRuntime, type InstalledRuntime } from "./runtime.js";
+import { ZLoginCliError } from "./errors.js";
 
 export interface RuntimeEndpoint {
 	pid: number;
@@ -125,7 +126,7 @@ const locateLaunchTarget = async (installed: InstalledRuntime): Promise<RuntimeL
 		const candidate = path.join(installed.path, name);
 		if (await stat(candidate).then(() => true).catch(() => false)) return { executable: candidate, args: [] };
 	}
-	throw new Error("Installed Runtime executable was not found");
+	throw new ZLoginCliError("runtime_unavailable", "Installed Runtime executable was not found", 6, false);
 };
 
 const waitForEndpoint = async (expectedVersion: string, timeoutMs: number, intervalMs: number): Promise<RuntimeEndpoint> => {
@@ -138,7 +139,7 @@ const waitForEndpoint = async (expectedVersion: string, timeoutMs: number, inter
 		}
 		await new Promise(resolve => setTimeout(resolve, intervalMs));
 	}
-	throw new Error(`Runtime health check timed out after ${timeoutMs}ms`);
+	throw new ZLoginCliError("runtime_unavailable", `Runtime health check timed out after ${timeoutMs}ms`, 6, true);
 };
 
 export const getRuntimeStatus = async (): Promise<RuntimeStatus> => {
@@ -154,11 +155,11 @@ export const startRuntime = async (options: StartRuntimeOptions = {}): Promise<R
 	const endpoint = await readRuntimeEndpoint();
 	if (endpoint && processExists(endpoint.pid)) {
 		if (await runtimeHealth(endpoint)) return endpoint;
-		throw new Error(`Runtime process ${endpoint.pid} is running but did not pass its health check`);
+		throw new ZLoginCliError("runtime_unavailable", `Runtime process ${endpoint.pid} is running but did not pass its health check`, 6, true);
 	}
 	const existing = await getRuntimeStatus();
 	if (existing.running && existing.endpoint) return existing.endpoint;
-	if (!existing.installed) throw new Error("Runtime is not installed");
+	if (!existing.installed) throw new ZLoginCliError("runtime_not_installed", "Runtime is not installed", 5, false);
 	const target = options.executable
 		? { executable: options.executable, args: [] }
 		: await locateLaunchTarget(existing.installed);
@@ -217,7 +218,7 @@ export const stopRuntime = async (timeoutMs = 5000): Promise<boolean> => {
 		// The process may have exited between the last poll and the signal.
 	}
 	await rm(endpointPath(), { force: true });
-	throw new Error("Runtime did not stop before the timeout");
+	throw new ZLoginCliError("runtime_unavailable", "Runtime did not stop before the timeout", 6, true);
 };
 
 export const protectEndpointFile = async (): Promise<void> => {

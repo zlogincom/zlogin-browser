@@ -69,6 +69,22 @@ export interface ZLoginRuntimeReleaseManifest {
 
 export const ZLOGIN_RUNTIME_PROTOCOL_VERSION = 1;
 
+/** CLI/Runtime 生命周期错误编码，供脚本和 MCP 调用方稳定判断失败原因。 */
+export const ZLOGIN_RUNTIME_ERROR_CODES = {
+	NotInstalled: "runtime_not_installed",
+	Unavailable: "runtime_unavailable",
+	ReleaseRevoked: "runtime_release_revoked",
+	ReleaseInactive: "runtime_release_inactive",
+	QuotaExceeded: "runtime_quota_exceeded",
+	AuthRequired: "runtime_auth_required",
+	ProtocolUnsupported: "runtime_protocol_unsupported",
+	PlatformMismatch: "runtime_platform_mismatch",
+	CliOutdated: "runtime_cli_outdated",
+	RequestFailed: "runtime_request_failed"
+} as const;
+
+export type ZLoginRuntimeErrorCode = (typeof ZLOGIN_RUNTIME_ERROR_CODES)[keyof typeof ZLOGIN_RUNTIME_ERROR_CODES];
+
 export interface ZLoginRuntimeIdentitySummary {
 	userId: string;
 	displayName: string;

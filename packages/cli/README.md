@@ -32,7 +32,15 @@ inside the installed version; `artifactType` is metadata for `zip`, `tar`, or
 `tar.gz` artifacts. Older manifests remain compatible and use the conventional
 packaged executable names.
 
-Exit codes: `0` success (warnings are allowed), `1` invalid/unknown command, `2` unavailable or unconfigured command, `3` authentication failure, `4` Open API failure, `5` kernel failure, `6` doctor failure.
+Exit codes: `0` success (warnings are allowed), `1` invalid/unknown command, `2` unavailable or unconfigured command, `3` authentication failure, `4` Open API or generic Runtime request failure, `5` Runtime installation/protocol/platform failure, `6` Runtime unavailable or doctor failure, `7` inactive/revoked Runtime release, `8` Runtime quota exceeded.
+
+Runtime-backed failures use stable JSON error codes so shell scripts do not need to
+parse localized or server-generated messages. The main codes are
+`runtime_not_installed`, `runtime_unavailable`, `runtime_release_revoked`,
+`runtime_release_inactive`, `runtime_quota_exceeded`,
+`runtime_auth_required`, `runtime_protocol_unsupported`,
+`runtime_platform_mismatch`, and `runtime_cli_outdated`. Responses also include
+`retryable`; upstream status and request identifiers are retained when present.
 
 `doctor` performs a read-only platform, Runtime installation/health, diagnostics,
 authentication, kernel, Open API configuration, and disk-space check. `--repair`

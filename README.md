@@ -53,6 +53,11 @@ signatures, installs transactionally, and never prints the Runtime control
 token. Profile commands use the loopback Open API through
 `ZLOGIN_OPENAPI_URL` and `ZLOGIN_OPENAPI_KEY`.
 
+Runtime lifecycle failures are exposed with stable CLI error codes and exit
+statuses. Quota, inactive/revoked release, protocol mismatch, missing Runtime,
+and temporary Runtime availability failures can therefore be handled by scripts
+without matching human-readable messages.
+
 Add the server to an MCP client using the absolute path to `packages/mcp/dist/index.js`:
 
 ```json

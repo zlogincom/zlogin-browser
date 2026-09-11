@@ -1,6 +1,17 @@
 import { getRuntimeStatus, restartRuntimeAfterCrash, startRuntime, type RuntimeEndpoint, type StartRuntimeOptions } from "./supervisor.js";
+import { ZLoginCliError, normalizeRuntimeError } from "./errors.js";
 
-class RuntimeControlResponseError extends Error {}
+export class RuntimeControlResponseError extends Error {
+	constructor(
+		message: string,
+		readonly code: string,
+		readonly status: number,
+		readonly requestId: string | null
+	) {
+		super(message);
+		this.name = "RuntimeControlResponseError";
+	}
+}
 
 export const requireRuntimeEndpoint = async (startOptions: StartRuntimeOptions = {}): Promise<RuntimeEndpoint> => {
 	const status = await getRuntimeStatus();
@@ -25,8 +36,13 @@ const requestRuntimeEndpoint = async <T>(endpoint: RuntimeEndpoint, pathname: st
 			signal: controller.signal
 		});
 		if (!response.ok) {
-			const body = await response.json().catch(() => null) as { message?: string } | null;
-			throw new RuntimeControlResponseError(body?.message ?? `Runtime control request failed (${response.status})`);
+			const body = await response.json().catch(() => null) as { message?: string; detail?: string; title?: string; code?: string; error?: string; requestId?: string } | null;
+			throw new RuntimeControlResponseError(
+				body?.message ?? body?.detail ?? body?.title ?? `Runtime control request failed (${response.status})`,
+				body?.code ?? body?.error ?? "runtime_request_failed",
+				response.status,
+				body?.requestId ?? response.headers.get("x-request-id")
+			);
 		}
 		return await response.json() as T;
 	} finally {
@@ -41,17 +57,20 @@ export const runtimeControlRequest = async <T>(pathname: string, init: RequestIn
 		try {
 			return await requestRuntimeEndpoint<T>(endpoint, pathname, init, timeoutMs);
 		} catch (error) {
-			if (attempt > 0 || error instanceof RuntimeControlResponseError || init.body !== undefined && typeof init.body !== "string") throw error;
+			if (error instanceof RuntimeControlResponseError) throw normalizeRuntimeError(error, error.message);
+			if (attempt > 0 || init.body !== undefined && typeof init.body !== "string") {
+				throw new ZLoginCliError("runtime_unavailable", error instanceof Error ? error.message : "Runtime became unavailable", 6, true, {}, { cause: error });
+			}
 			let restarted: RuntimeEndpoint | null;
 			try {
 				restarted = await restartRuntimeAfterCrash(endpoint);
 			} catch (restartError) {
-				const message = restartError instanceof Error ? restartError.message : "Runtime restart failed";
-				throw new Error(`Runtime crashed and automatic restart failed: ${message}`, { cause: error });
+				const normalized = normalizeRuntimeError(restartError, "Runtime restart failed");
+				throw new ZLoginCliError("runtime_unavailable", `Runtime crashed and automatic restart failed: ${normalized.message}`, 6, true, {}, { cause: error });
 			}
-			if (!restarted) throw error;
+			if (!restarted) throw new ZLoginCliError("runtime_unavailable", "Runtime became unavailable and could not be restarted", 6, true, {}, { cause: error });
 			endpoint = restarted;
 		}
 	}
-	throw new Error("Runtime control request exhausted its single restart attempt");
+	throw new ZLoginCliError("runtime_unavailable", "Runtime control request exhausted its single restart attempt", 6, true);
 };

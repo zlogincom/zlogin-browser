@@ -10,6 +10,7 @@ import { getRuntimeStatus, startRuntime, stopRuntime } from "./supervisor.js";
 import { getProfileStatusWithRuntime, startProfileWithRuntime, stopProfileWithRuntime } from "./runtimeProfile.js";
 import { updateRuntime } from "./updater.js";
 import { runDoctor } from "./doctor.js";
+import { normalizeRuntimeError, isRuntimeCliError } from "./errors.js";
 
 const CLI_VERSION = "0.1.0";
 const args = process.argv.slice(2);
@@ -36,6 +37,18 @@ const output = (value: unknown, code = 0): number => {
 };
 const errorOutput = (code: string, message: string, exitCode = 2): number => output({ error: code, message }, exitCode);
 
+const runtimeErrorOutput = (error: unknown, fallbackMessage: string): number => {
+	const normalized = normalizeRuntimeError(error, fallbackMessage);
+	return output({
+		error: normalized.code,
+		message: normalized.message,
+		retryable: normalized.retryable,
+		...(normalized.details.status === undefined ? {} : { status: normalized.details.status }),
+		...(normalized.details.requestId === undefined ? {} : { requestId: normalized.details.requestId }),
+		...(normalized.details.upstreamCode === undefined ? {} : { upstreamCode: normalized.details.upstreamCode })
+	}, normalized.exitCode);
+};
+
 const publicEndpoint = (endpoint: Awaited<ReturnType<typeof startRuntime>>) => ({
 	pid: endpoint.pid,
 	version: endpoint.version,
@@ -46,6 +59,7 @@ const publicEndpoint = (endpoint: Awaited<ReturnType<typeof startRuntime>>) => (
 
 const handleOpenApiError = (error: unknown): number => {
 	if (error instanceof OpenApiRequestError) {
+		if (/quota|runtime|revok|protocol/i.test(error.code)) return runtimeErrorOutput(error, "Runtime Open API request failed");
 		return output({ error: error.code, message: error.message, status: error.status, requestId: error.requestId }, 4);
 	}
 	return errorOutput("openapi_request_failed", error instanceof Error ? error.message : "Open API request failed", 4);
@@ -70,14 +84,14 @@ const run = async (): Promise<number> => {
 		try {
 			return output({ status: "running", endpoint: publicEndpoint(await startRuntime()) });
 		} catch (error) {
-			return errorOutput("runtime_start_failed", error instanceof Error ? error.message : "Runtime start failed");
+			return runtimeErrorOutput(error, "Runtime start failed");
 		}
 	}
 	if (group === "runtime" && action === "stop") {
 		try {
 			return output({ status: "stopped", wasRunning: await stopRuntime() });
 		} catch (error) {
-			return errorOutput("runtime_stop_failed", error instanceof Error ? error.message : "Runtime stop failed");
+			return runtimeErrorOutput(error, "Runtime stop failed");
 		}
 	}
 	if (group === "runtime" && action === "update") {
@@ -87,7 +101,7 @@ const run = async (): Promise<number> => {
 			const result = await updateRuntime(await fetchReleaseManifest(endpoint, process.env.ZLOGIN_RUNTIME_CHANNEL ?? "stable"));
 			return output({ status: "running", ...result.installed, endpoint: publicEndpoint(result.endpoint) });
 		} catch (error) {
-			return errorOutput("runtime_update_failed", error instanceof Error ? error.message : "Runtime update failed");
+			return runtimeErrorOutput(error, "Runtime update failed");
 		}
 	}
 	if (group === "login") {
@@ -104,6 +118,7 @@ const run = async (): Promise<number> => {
 			});
 			return output({ status: "authenticated", session });
 		} catch (error) {
+			if (isRuntimeCliError(error)) return runtimeErrorOutput(error, "Runtime authentication request failed");
 			return errorOutput("authentication_failed", error instanceof Error ? error.message : "Authentication failed", 3);
 		}
 	}
@@ -111,6 +126,7 @@ const run = async (): Promise<number> => {
 		try {
 			return output({ status: "logged-out", ...(await logout()) });
 		} catch (error) {
+			if (isRuntimeCliError(error)) return runtimeErrorOutput(error, "Runtime logout request failed");
 			return errorOutput("logout_failed", error instanceof Error ? error.message : "Logout failed", 3);
 		}
 	}
@@ -118,6 +134,7 @@ const run = async (): Promise<number> => {
 		try {
 			return output(await getAuthStatus());
 		} catch (error) {
+			if (isRuntimeCliError(error)) return runtimeErrorOutput(error, "Runtime authentication status failed");
 			return errorOutput("authentication_status_failed", error instanceof Error ? error.message : "Authentication status failed", 3);
 		}
 	}
@@ -132,6 +149,7 @@ const run = async (): Promise<number> => {
 			if (action === "stop") return output((await stopProfileWithRuntime(selector)) ?? await stopProfile(selector));
 			throw new Error(`Unknown profile command: ${action ?? ""}`);
 		} catch (error) {
+			if (isRuntimeCliError(error)) return runtimeErrorOutput(error, "Runtime profile request failed");
 			return handleOpenApiError(error);
 		}
 	}
@@ -150,7 +168,7 @@ const run = async (): Promise<number> => {
 			}
 			throw new Error(`Unknown kernel command: ${command.slice(1).join(" ")}`);
 		} catch (error) {
-			return errorOutput("kernel_command_failed", error instanceof Error ? error.message : "Kernel command failed", 5);
+			return runtimeErrorOutput(error, "Kernel command failed");
 		}
 	}
 	return output({ error: "unknown_command", command: command.join(" "), host: os.hostname() }, 1);

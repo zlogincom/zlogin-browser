@@ -10,6 +10,7 @@ import * as path from "node:path";
 import * as process from "node:process";
 import { runtimeRoot } from "./runtime.js";
 import { getRuntimeStatus, runtimeHealth, startRuntime, type RuntimeEndpoint } from "./supervisor.js";
+import { normalizeRuntimeError } from "./errors.js";
 
 export type DoctorCheckStatus = "pass" | "warn" | "fail" | "skip";
 
@@ -87,8 +88,8 @@ const checkDisk = async (): Promise<DoctorCheck> => {
 };
 
 const checkRuntimeEndpoint = async (endpoint: RuntimeEndpoint | null): Promise<DoctorCheck> => {
-	if (!endpoint) return check("runtime-health", "fail", "Runtime 未运行或健康检查未通过");
-	if (!(await runtimeHealth(endpoint))) return check("runtime-health", "fail", "Runtime 进程存在但健康检查未通过");
+	if (!endpoint) return check("runtime-health", "fail", "Runtime 未运行或健康检查未通过", { errorCode: "runtime_unavailable", action: "zlogin doctor --repair" });
+	if (!(await runtimeHealth(endpoint))) return check("runtime-health", "fail", "Runtime 进程存在但健康检查未通过", { errorCode: "runtime_unavailable", action: "zlogin doctor --repair" });
 	return check("runtime-health", "pass", "Runtime 健康检查通过", { version: endpoint.version, pid: endpoint.pid, port: endpoint.port });
 };
 
@@ -152,7 +153,7 @@ export const runDoctor = async (options: { repair?: boolean; bundlePath?: string
 	if (status.installed) {
 		checks.push(check("runtime-installation", "pass", "Runtime 已安装", { version: status.installed.version }));
 	} else {
-		checks.push(check("runtime-installation", "fail", "Runtime 尚未安装"));
+		checks.push(check("runtime-installation", "fail", "Runtime 尚未安装", { errorCode: "runtime_not_installed", action: "zlogin runtime update" }));
 	}
 	if (options.repair && status.installed && !status.running) {
 		try {
@@ -161,7 +162,8 @@ export const runDoctor = async (options: { repair?: boolean; bundlePath?: string
 			status = await getRuntimeStatus();
 			checks.push(check("runtime-repair", status.running ? "pass" : "fail", status.running ? "已启动并修复 Runtime" : "Runtime 修复启动后仍未通过健康检查"));
 		} catch (error) {
-			checks.push(check("runtime-repair", "fail", "Runtime 自动修复失败", { reason: error instanceof Error ? error.message : "unknown" }));
+			const normalized = normalizeRuntimeError(error, "Runtime 自动修复失败");
+			checks.push(check("runtime-repair", "fail", "Runtime 自动修复失败", { errorCode: normalized.code, retryable: normalized.retryable, reason: normalized.message }));
 		}
 	}
 	checks.push(await checkRuntimeEndpoint(status.endpoint));

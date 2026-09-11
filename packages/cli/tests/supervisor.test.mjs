@@ -25,7 +25,7 @@ const token = randomBytes(24).toString("hex");
 const server = createServer(async (request, response) => {
   if (request.headers["x-zlogin-runtime-token"] !== token) { response.writeHead(401); response.end(); return; }
   if (request.url === "/health") { response.writeHead(200); response.end(JSON.stringify({ ok: true, protocolVersion: 1, runtimeVersion: process.env.ZLOGIN_RUNTIME_VERSION })); return; }
-  if (request.url === "/business-error") { response.writeHead(409, { "content-type": "application/json" }); response.end(JSON.stringify({ message: "Runtime business conflict" })); return; }
+  if (request.url === "/business-error") { response.writeHead(409, { "content-type": "application/json" }); response.end(JSON.stringify({ code: "profile_quota_exceeded", message: "Runtime business conflict" })); return; }
   if (request.url === "/disconnect") { request.socket.destroy(); return; }
   if (request.url === "/crash-once") {
     const marker = join(dirname(endpointFile), "crash-once.marker");
@@ -116,7 +116,12 @@ test("restarts a crashed Runtime once and does not restart for business errors",
 	});
 
 	const first = await startRuntime({ timeoutMs: 5000, intervalMs: 25 });
-	await assert.rejects(runtimeControlRequest("/business-error"), /Runtime business conflict/);
+	await assert.rejects(runtimeControlRequest("/business-error"), error => {
+		assert.equal(error.code, "runtime_quota_exceeded");
+		assert.equal(error.details.status, 409);
+		assert.equal(error.details.upstreamCode, "profile_quota_exceeded");
+		return /Runtime business conflict/.test(error.message);
+	});
 	assert.equal(Number(await readFile(join(home, "launch-count.txt"), "utf8")), 1);
 	await assert.rejects(runtimeControlRequest("/disconnect"));
 	assert.equal(Number(await readFile(join(home, "launch-count.txt"), "utf8")), 1);
